@@ -75,6 +75,7 @@ destroy()||Not implemented yet. But it should be, right?
 
 # Callbacks
 Pass callbacks along with `args` when initializing the list, as in the example above.
+
 name|return type|description
 ---|---|---
 getData(list)|array|**Required**. If you want to display something and not to crash anything.
@@ -83,6 +84,7 @@ getElementChildren(element, list)|array|Optional. Used for tree data.
 
 # Events
 All events are also available as callbacks. For the sake of DRY they are not listed separately.
+
 name|parameters|description
 ---|---|---
 didRenderFirstElement|element, list|Triggered every time the first element of your data is rendered.
