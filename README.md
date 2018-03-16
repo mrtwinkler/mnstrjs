@@ -1,4 +1,4 @@
-![alt text](http://localhost:8075/MonsterList/es5/logo.png "Logo Title Text 1")
+![alt text](/logo.png "mnstr.js")
 
 # What?
 MNSTR is designed to render large lists of data in no time by only rendering what is actually visible in the viewport (like UITableView, for example). Unlike other approaches in javascript, it does not require you to provide cell heights and keeps the amount of DOM elements as low as possible. It is completely written in ES5. There will be an ES6/ES8 port, but I don't know when. The library is still under development and may have bugs. Use at your own risk.
