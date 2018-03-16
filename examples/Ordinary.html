@@ -1,0 +1,31 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="google" value="notranslate">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<link rel="stylesheet" type="text/css" href="common/common.css">
+		<script type="text/javascript" src="common/datagen.js"></script>
+		<script type="text/javascript" src="common/templates.js"></script>
+		<style type="text/css">
+			#list {
+				list-style-type: none;
+				margin: 0px;
+				padding: 0px;
+			}
+		</style>
+	</head>
+	<body>
+			<ul id="list"></ul>
+		<script type="text/javascript">
+			var data = new DataGen().generate({rootElements: 10000, maxLevel: 0});
+			var list = document.getElementById('list');
+
+			for (var i = 0; i < data.length; i++) {
+				var li = document.createElement('li');
+				var renderer = getRendererSimple(data[i]);
+				li.appendChild(renderer);
+				list.appendChild(li);
+			}
+		</script>
+	</body>
+</html>

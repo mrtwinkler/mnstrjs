@@ -1,0 +1,145 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="google" value="notranslate">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<link rel="stylesheet" type="text/css" href="common/common.css">
+		<script type="text/javascript" src="../src/mnstr.js"></script>
+		<script type="text/javascript" src="common/datagen.js"></script>
+		<script type="text/javascript" src="common/templates.js"></script>
+		<style type="text/css">
+			body {
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+			}
+
+			.messages {
+				flex: 1 1 auto;
+				position: relative;
+			}
+
+			.input {
+				flex: 0 0 auto;
+				padding: 1em 2em;
+			}
+
+			.input input {
+				padding: 10px;
+				line-height: 20px;
+				width: 100%;
+				border: 1px solid #888;
+				border-radius: 0.4em;
+				font-size: 1em;
+				outline: 0;
+			}
+
+			.input input:focus {
+				border-width: 2px;
+				border-color: #32a86d;
+				padding: 9px;
+			}
+
+			:focus::-webkit-input-placeholder {
+				color: transparent;
+			}
+			:focus::-moz-placeholder {
+				color: transparent;
+			}
+			:focus:-ms-input-placeholder {
+				color: transparent;
+			}
+
+			.mnstr {
+				position: absolute !important;
+				top: 0;
+				bottom: 0;
+				width: 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="messages" id="messages"></div>
+		<div class="input">
+			<input type="text" onkeypress="handleInput(event)" placeholder="Type message here ...">
+		</div>
+
+		<script type="text/javascript">
+			var dataGen 			= new DataGen({maxLevel: 0});
+			var allMessages 		= dataGen.generate({rootElements: 1000});
+			var renderedMessages	= [];
+			var isLoading;
+
+			// Prepare data. Push a new node which identifies as a "loading" placeholder.
+			// This node will render with a different cell renderer.
+
+			var popMessages = function (amount) {
+				while (amount-- > 0) {
+					renderedMessages.unshift(allMessages.pop());
+				}
+			};
+
+			var getLoader = function () {
+				return {
+					id: 	'loader',
+					label: 	'loading older messages'
+				};
+			};
+
+			popMessages(100);
+
+			renderedMessages.unshift(getLoader());
+
+			var list = new MNSTR({
+				parentNode: 			document.getElementById('messages'),
+				getData: 				function (list) {
+											return renderedMessages;
+										},
+				initialScrollToElement: renderedMessages[renderedMessages.length - 1],
+				getCellRenderer: 		function (element, index, isExpanded, list) {
+											return typeof element.id === 'number'
+												? getRendererSimple(element, renderedMessages, list)
+												: getRendererLoader(element);
+										},
+			});
+
+			list.addEventListener('didRenderFirstElement', function (element, list) {
+				if (isLoading || typeof element.id === 'number') {
+					return;
+				}
+
+				// To simulate "loading", update the list a bit later, not directly when
+				// the event was triggered.
+
+				isLoading = setTimeout(function () {
+					var loadingElement = renderedMessages.shift();
+					popMessages(100);
+					if (allMessages.length > 0) {
+						renderedMessages.unshift(getLoader());
+					}
+					list.dataUpdated();
+					isLoading = undefined;
+				}, 2000);
+			});
+
+			function handleInput (e) {
+				if(e.keyCode === 13){
+		            e.preventDefault();
+					var message = e.target.value;
+
+					renderedMessages.push({
+						id: 		renderedMessages[renderedMessages.length - 1].id + 1,
+						directId: 	renderedMessages[renderedMessages.length - 1].directId + 1,
+						name: 		dataGen.names[0],
+						avatar: 	dataGen.avatars[0],
+						text: 		message
+					});
+
+					list.dataUpdated();
+					list.scrollToBottom();
+					e.target.value = '';
+		        }
+			}
+		</script>
+	</body>
+</html>

@@ -1,0 +1,32 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="google" value="notranslate">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<link rel="stylesheet" type="text/css" href="common/common.css">
+		<script type="text/javascript" src="../src/mnstr.js"></script>
+		<script type="text/javascript" src="common/datagen.js"></script>
+		<script type="text/javascript" src="common/templates.js"></script>
+		<style type="text/css">
+			.mnstr {
+				max-height: 100%;
+				width: 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+			var data = new DataGen().generate({rootElements: 10000, maxLevel: 0});
+
+			var list = new MNSTR({
+				preventWheelBubbling: true,
+				getData: 			function (list) {
+										return data;
+									},
+				getCellRenderer: 	function (element) {
+										return getRendererSimple(element);
+									}
+			});
+		</script>
+	</body>
+</html>
