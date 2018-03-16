@@ -23,15 +23,15 @@ There are some examples for different situations to be found at `/examples`. How
 
 ```javascript
 var list = new MNSTR({
-	parentNode: 		document.body,
-	getData: 			function () {
-							return ['The', 'quick', 'brown', ...];
-						},
-	getCellRenderer: 	function (element) {
-							var node = document.createElement('span');
-							node.innerHTML = element;
-							return node;
-						}
+	parentNode: document.body,
+	getData: function () {
+		return ['The', 'quick', 'brown', ...];
+	},
+	getCellRenderer: function (element) {
+		var node = document.createElement('span');
+		node.innerHTML = element;
+		return node;
+	}
 });
 ```
 **CSS**
