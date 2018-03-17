@@ -120,6 +120,3 @@ The browsers have a height limitation on DOM elements, it means that currently t
 * ES8
 * destroy()
 * Some wrappers for react, vue, etc.
-
-# License
-MIT
