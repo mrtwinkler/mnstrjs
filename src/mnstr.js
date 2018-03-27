@@ -84,6 +84,10 @@ MNSTR.prototype = {
 		return this._dataUpdated();
 	},
 
+	reRenderAllCells: function () {
+		return this._updateCells(true, true);
+	},
+
 	cellBoundsUpdated: function () {
 		return this._cellBoundsUpdated();
 	},
@@ -901,7 +905,7 @@ MNSTR.prototype = {
 	// if the data of the cell matches the data at the index.
 	// Returns the cell if an update was performed or nothing, if not.
 
-	_updateCellWithElementAtIndex: function (cell, index) {
+	_updateCellWithElementAtIndex: function (cell, index, force) {
 		var elementAndLevel = this._getElementAndLevelAtIndex(index);
 		cell.__valid = true;
 
@@ -912,7 +916,7 @@ MNSTR.prototype = {
 		var element 	= elementAndLevel.element;
 		var level 		= elementAndLevel.level;
 
-		if (!element || element === cell.__element) {
+		if (!element || (element === cell.__element && !force)) {
 			return;
 		}
 
@@ -958,11 +962,11 @@ MNSTR.prototype = {
 		return cell;
 	},
 
-	_updateCells: function (force) {
-		this._requestFrame(this.__updateCells, 'updatecells', force);
+	_updateCells: function (force, bruteforce) {
+		this._requestFrame(this.__updateCells, 'updatecells', force, bruteforce);
 	},
 
-	__updateCells: function (force) {
+	__updateCells: function (force, bruteforce) {
 		// Get some vars
 
 		var scrollTop 			= this._getScrollPosition();
@@ -1050,7 +1054,7 @@ MNSTR.prototype = {
 			var cell 			= cells[increment > 0 ? i : cells.length - 1 -i];
 			var cellIndex 		= force ? cell.__index : iteratingIndex;
 			var didUpdateCell = cellIndex >= 0 && cellIndex <= this._currentMaxIndex
-				? this._updateCellWithElementAtIndex(cell, cellIndex)
+				? this._updateCellWithElementAtIndex(cell, cellIndex, bruteforce)
 				: void 0;
 
 			if (force || didUpdateCell) {
