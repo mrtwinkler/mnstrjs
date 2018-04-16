@@ -1073,7 +1073,7 @@ MNSTR.prototype = {
 					var topDeviation 	 	= 0;
 					iteratingPositition -= cellIndex > -1 ? this._getCellHeight(cell) : 0;
 
-					if (cellIndex === 0 && iteratingPositition !== 0) {
+					if (iteratingPositition < 0) {
 						topDeviation = iteratingPositition;
 						iteratingPositition = 0;
 					}
