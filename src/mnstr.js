@@ -1,3 +1,4 @@
+/* eslint-disable */
 ;(function(root, factory) {
 	if (typeof define === 'function' && define.amd) {
 		define('MNSTR', [], function() {
@@ -860,7 +861,7 @@ MNSTR.prototype = {
 
 			indexDeviation = cell.__index - index;
 
-			if (Math.abs(indexDeviation) > i) {
+			if (Math.abs(indexDeviation) > 0) {
 				positionDeviation 	= indexDeviation * this._averageCellHeight;
 				hookedCell 			= cell;
 				break;
@@ -1059,6 +1060,10 @@ MNSTR.prototype = {
 
 			if (force || didUpdateCell) {
 				this._updateCellHeight(cell);
+
+				if (cellIndex === 0) {
+					iteratingPositition = 0;
+				}
 
 				// Updating list from top to bottom.
 
