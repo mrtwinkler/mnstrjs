@@ -759,27 +759,17 @@ MNSTR.prototype = {
 	},
 
 	__maintainCellCount: function () {
-		// Remove cells if they exceed our buffer or data index range.
+		this.__addCellsIfNeeded();
+		this.__removeCellsIfNeeded();
 
-		var sortedCells 	= this._getCellsSorted();
-		var minListHeight 	= this._getMinimumListHeight();
-
-		for (var i = sortedCells.length - 1; i >= 0; i--) {
-			var cell = sortedCells[i];
-
-			if (cell.__index < 0 || cell.__index > this._currentMaxIndex || (i === sortedCells.length - 1 && this._lowestCellHeight * (sortedCells.length - 2) - this._getCellHeight(cell) > minListHeight)) {
-				this._listNode.removeChild(cell);
-				sortedCells.splice(i, 1);
-
-				this._updateCellMeasurements();
-				this._updateListBounds();
-			}
+		if (this.initialScrollToElement) {
+			this.__maintainScrollPositionIntegrity(true);
+			this._scrollToElement(this.initialScrollToElement);
+			this.initialScrollToElement = undefined;
 		}
+	},
 
-		this._updateCellsSorted();
-
-		// Add cells as long as the threshold bounds are not reached.
-
+	__addCellsIfNeeded: function () {
 		while(this._getCellsSorted().length === 0 || this._lowestCellHeight * (this._getCells().length - 2) < this._getMinimumListHeight()) {
 			var firstRenderIndex 	= this._getFirstRenderIndex();
 			var lastRenderIndex  	= this._getLastRenderIndex();
@@ -814,12 +804,25 @@ MNSTR.prototype = {
 				break;
 			}
 		}
+	},
 
-		if (this.initialScrollToElement) {
-			this.__maintainScrollPositionIntegrity(true);
-			this._scrollToElement(this.initialScrollToElement);
-			this.initialScrollToElement = undefined;
+	__removeCellsIfNeeded: function () {
+		var sortedCells 	= this._getCellsSorted();
+		var minListHeight 	= this._getMinimumListHeight();
+
+		for (var i = sortedCells.length - 1; i >= 0; i--) {
+			var cell = sortedCells[i];
+
+			if (cell.__index < 0 || cell.__index > this._currentMaxIndex || (i === sortedCells.length - 1 && this._lowestCellHeight * (sortedCells.length - 2) - this._getCellHeight(cell) > minListHeight)) {
+				this._listNode.removeChild(cell);
+				sortedCells.splice(i, 1);
+
+				this._updateCellMeasurements();
+				this._updateListBounds();
+			}
 		}
+
+		this._updateCellsSorted();
 	},
 
 	// Determine, if there is a deviation of the current index of a cell and its
@@ -1195,14 +1198,19 @@ MNSTR.prototype = {
 		cell.classList.remove('expanded');
 
 		this._removeExpandInformationForCell(cell);
-		this._updateCells(true);
+		this._requestFrame(function () {
+			this.__updateCells(true);
+			this.__addCellsIfNeeded();
+		}, 'collapse');
 	},
 
 	_expandCell: function (cell) {
 		cell.classList.add('expanded');
 
 		this._addExpandInformationForCell(cell);
-		this._updateCells(true);
+		this._requestFrame(function () {
+			this.__updateCells(true);
+		}, 'expand');
 	},
 
 	_getExpandInformationForElement: function (element) {
