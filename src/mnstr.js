@@ -759,6 +759,25 @@ MNSTR.prototype = {
 	},
 
 	__maintainCellCount: function () {
+		// Remove cells if they exceed our buffer or data index range.
+
+		var sortedCells 	= this._getCellsSorted();
+		var minListHeight 	= this._getMinimumListHeight();
+
+		for (var i = sortedCells.length - 1; i >= 0; i--) {
+			var cell = sortedCells[i];
+
+			if (cell.__index < 0 || cell.__index > this._currentMaxIndex || (i === sortedCells.length - 1 && this._lowestCellHeight * (sortedCells.length - 2) - this._getCellHeight(cell) > minListHeight)) {
+				this._listNode.removeChild(cell);
+				sortedCells.splice(i, 1);
+
+				this._updateCellMeasurements();
+				this._updateListBounds();
+			}
+		}
+
+		this._updateCellsSorted();
+
 		// Add cells as long as the threshold bounds are not reached.
 
 		while(this._getCellsSorted().length === 0 || this._lowestCellHeight * (this._getCells().length - 2) < this._getMinimumListHeight()) {
@@ -801,25 +820,6 @@ MNSTR.prototype = {
 			this._scrollToElement(this.initialScrollToElement);
 			this.initialScrollToElement = undefined;
 		}
-
-		// Remove cells if they exceed our buffer or data index range.
-
-		var sortedCells 	= this._getCellsSorted();
-		var minListHeight 	= this._getMinimumListHeight();
-
-		for (var i = sortedCells.length - 1; i >= 0; i--) {
-			var cell = sortedCells[i];
-
-			if (cell.__index < 0 || cell.__index > this._currentMaxIndex || (i === sortedCells.length - 1 && this._lowestCellHeight * (sortedCells.length - 2) - this._getCellHeight(cell) > minListHeight)) {
-				this._listNode.removeChild(cell);
-				sortedCells.splice(i, 1);
-
-				this._updateCellMeasurements();
-				this._updateListBounds();
-			}
-		}
-
-		this._updateCellsSorted();
 	},
 
 	// Determine, if there is a deviation of the current index of a cell and its
