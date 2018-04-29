@@ -215,7 +215,7 @@ MNSTR.prototype = {
 
 		this._scrollNode = document.createElement('div');
 		this._scrollNode.classList.add(this.className);
-		this._scrollNode.setAttribute('style', 'overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-scrolling: touch; position: relative;');
+		this._scrollNode.setAttribute('style', 'overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-scrolling: touch; position: relative; will-change: transform;');
 
 		this.parentNode = parentNode || this.parentNode || document.body;
 		this.parentNode.appendChild(this._scrollNode);
