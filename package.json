@@ -1,0 +1,46 @@
+{
+  "name": "mnstr",
+  "version": "2.0.0",
+  "homepage": "http://mnstrjs.com",
+  "author": "Thomas Winkler",
+  "license": "MIT",
+  "description": "Ultra fast large list rendering.",
+  "main": "dist/mnstr.umd.js",
+  "module": "dist/mnstr.esm.js",
+  "jsnext:main": "dist/mnstr.esm.js",
+  "keywords": [
+    "render",
+    "list",
+    "cell",
+    "reusing",
+    "virtual",
+    "scroll",
+    "responsive"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.6",
+    "babel-plugin-es6-promise": "^1.1.1",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-plugin-transform-object-assign": "^6.22.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.7.0",
+    "eslint": "^5.2.0",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-html": "^4.0.5",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-node": "^7.0.1",
+    "eslint-plugin-promise": "^3.8.0",
+    "eslint-plugin-standard": "^3.1.0",
+    "esm": "^3.0.72",
+    "regenerator": "^0.13.2",
+    "rollup-plugin-babel": "^3.0.7",
+    "rollup-plugin-commonjs": "^9.1.4",
+    "rollup-plugin-node-resolve": "^3.3.0",
+    "rollup-plugin-terser": "^1.0.1"
+  },
+  "files": [
+    "dist/"
+  ]
+}

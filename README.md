@@ -1,47 +1,56 @@
-![alt text](/logo.png "mnstr.js")
+![alt text](/logo.svg "mnstr.js")
 
 # What?
-MNSTR is designed to render large lists of data in no time by only rendering what is actually visible in the viewport (like UITableView, for example). Unlike other approaches in javascript, it does not require you to provide cell heights and keeps the amount of DOM elements as low as possible. It is completely written in ES5. There will be an ES6/ES8 port, but I don't know when. The library is still under development and may have bugs. Use at your own risk.
-
-<a href="http://mnstrjs.com/examples" target="_blank">Demo</a>
+MNSTR is designed to render large lists of data in no time by only rendering what is actually visible in the viewport (like UITableView, for example). It does not require you to provide cell heights and keeps the amount of DOM elements as low as possible.
 
 # Specs
 * no dependencies
 * native browser scrolling
 * support for tree data
 * responsive
-* 14kb minified, 5kb gzipped
 
-# Setup
-Package managers, cdns and whatsoever are yet to come. Until then, just download the file in `/dist` and do:
+# Install
+Download or clone this repository or use npm.
+```
+npm install mnstr
+```
+
+**Webpack / ESM**
+```JS
+import MNSTR from 'mnstr'
+```
+**Note:** Depending on your build target you might need to pass this module to babel.
+
+**RequireJS / Browserify**
+```JS
+require('mnstr')
+```
+**Browser**
 ```html
-<script type="text/javascript" src="mnstr.min.js"></script>
+<script type="text/javascript" src="dist/mnstr.min.js"></script>
 ```
 
 # Usage
-There are some examples for different situations to be found at `/examples`. However, basically they all do something like this:
 
 **Javascript**
 
 ```javascript
-var list = new MNSTR({
-	parentNode: document.body,
-	getData: function () {
-		return ['The', 'quick', 'brown', ...];
-	},
-	getCellRenderer: function (element) {
-		var node = document.createElement('span');
-		node.innerHTML = element;
-		return node;
-	}
-});
+new MNSTR({
+  parentNode: document.body,
+  getData: () => ['The', 'quick', 'brown', ...]
+  getCellRenderer: () => {
+    var node = document.createElement('span')
+    node.innerHTML = element
+    return node
+  }
+})
 ```
 **CSS**
 
 ```css
 .mnstr {
-	width: 100%;
-	height: 100%;
+  width: 100%;
+  height: 100%;
 }
 ```
 **Important:** You __need__ to set `height` or `max-height` of the list, or else it will just render all your data, not only what is its viewport. Also make sure that by the time the list renders (either when it is initialized or by calling `render()`), its parent is part of the DOM. Otherwise the list can not measure its or its cell heights.
@@ -59,6 +68,7 @@ preventWheelBubbling|bool|false|If true, parent containers will not scroll if th
 rememberChildrenExpands|bool|true|If set and an expanded node, which has children that are also expanded, is collapsed and re-expanded, the children will be re-expanded, too.
 updateThresholdRatio|float|0.5|Ratio (proportional to the list height) at which the top and bottom update thresholds will be placed. Higher means more cells will be rendered at a time.
 useTransform|bool|true|Use `transform` instead of `top` to position cells. When using transform (default), z-index will break when trying to overlap subsequent cells. Using top will negatively impact performance, since we don't render cells on their own layer anymore.
+virtualEnvironment|bool|false|Set this to true if MNSTR should be used in a vDOM environment like Vue or React, for example. Also make sure to implement needUpdateVirtualDOM (see callbacks below).
 
 # Methods
 name|parameter types|description
@@ -67,7 +77,8 @@ render(parentNode)|HTMLElement (optional)|If `renderOnInitialize` is false, call
 addEventListener(event, listener)|string, function|Subscribe to an event. See the events section below for a list of available events.
 removeEventListener(event, listener)|string, function|Unsubscribe from an event.
 getNode()||Returns the root HTMLElement of the list.
-dataUpdated()||Call this every time your data has been updated. The list will automatically fetch the updated data and update itself accordingly.
+needUpdate()||Call this when you want the list to update its data but NOT to update the cells. Under normal circumstances `update()` is what you want, but sometimes you don't want the list to render the update immediately but do other things instead.
+update(force, retainPosition)|bool, bool|Call this when your list data has been updated and you want the list to update, too. If you set force to true, all cells will be rerendered, even if their data item did not change. Setting retainPosition to true will make sure the list will not jump to the beginning after updating the data.
 cellBoundsUpdated()||Unless `observeCellBounds` is true, you need to call this every time a cell manually (not by resizing the whole list) changed its bounds. The list will then reposition all cells accordingly.
 expandElement(element)|object|Expands an element and exposes its children, fetched by `getElementChildren` directly below the elements cell.
 collapseElement(element)|object|Does the opposite of the method above.
@@ -83,6 +94,7 @@ name|return type|description
 getData(list)|array|**Required**. If you want to display something and not to crash anything.
 getCellRenderer(element, index, isExpanded, list)|HTMLElement or string|**Required**. Unless you still don't want to display anything.
 getElementChildren(element, list)|array|Optional. Used for tree data.
+needUpdateVirtualDOM(element, complete)|void 0|Required when MNSTR has to work within a virtual environment. `elements` is the current array of elements that need to be rendered. `complete` is the callback that needs to be called when rendering elements is complete.
 
 # Events
 All events are also available as callbacks. For the sake of DRY they are not listed separately.
@@ -91,19 +103,25 @@ name|parameters|description
 ---|---|---
 didRenderFirstElement|element, list|Triggered every time the first element of your data is rendered.
 didRenderLastElement|element, list|Triggered every time the last element of your data is rendered.
+firstInBoundsElementChanged|element, list|Triggered every time the first visible element of the list changed.
+lastInBoundsElementChanged|element, list|Triggered every time the last visible element of the list changed.
+cellsUpdated|cells, list|Triggered every time any cell has been updated. Cells is a sorted array of the DOM elements.
 
 # Tree data
-The list is capable of handling tree data (see examples for a demo). Each cell has a `data-level` attribute, which indicates the level of the element. Root elements are level 0, their children are level 1 and so on. If there is a need to visualize a hierarchy, you can set styles for each level like this:
+The list is capable of handling tree data. Each cell has a `data-level` attribute, which indicates the level of the element. Root elements are level 0, their children are level 1 and so on. If there is a need to visualize a hierarchy, you can set styles for each level like this:
 
 ```css
 .mnstr-cell[data-level="1"] .myCellRenderer {
-	padding-left: 25px;
+  padding-left: 25px;
 }
 .mnstr-cell[data-level="2"] .myCellRenderer {
-	padding-left: 50px;
+  padding-left: 50px;
 }
 ```
 Remember that `.mnstr` is the default CSS class name / namespace. You can always provide another class name, if you wish. See options for details.
+
+# VDOM
+Since 2.0 and ES6/ES8 features like promises and async/await MNSTR is designed to be compatible with environments that relay on virtual DOM (like Vue or React, for example). The setup is quite different, though. I'm working on wrappers for Vue and React along with comforting ways to create own wrappers or implementations. I will link them here when they are ready for usage.
 
 # Compatibility
 All mature browsers and IE11+.
@@ -117,8 +135,3 @@ The browsers have a height limitation on DOM elements, it means that currently t
 `Blink deferred a task [...]`. When using MNSTR you may come across this (Chrome) or a similar warning. See https://stackoverflow.com/a/37367801/258931 on how to track if your cell renderers might be a cause for that. But don't panic. At least Chrome likes to trigger this warning even if there are no events taking more than 5ms.
 
 **General rule**: Try to keep your cell renderers and the initialization of them as simple as possible. Try to test your list on slow devices or use cpu throttling.
-
-# Todo
-* ES8
-* destroy()
-* Some wrappers for react, vue, etc.
