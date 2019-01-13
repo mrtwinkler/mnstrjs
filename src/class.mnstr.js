@@ -222,7 +222,7 @@ export default class MNSTR {
 
   removeVirtualElementForCell (cell) {
     this._vElements
-      ? this._vElements.splice(this._cellsSorted.indexOf(cell), 1)
+      ? this._vElements.splice([].slice.call(this.getCells()).indexOf(cell), 1)
       : void 0
   }
 
@@ -688,7 +688,7 @@ export default class MNSTR {
         ? this.getIndexForElement(this._initialScrollToElement)
         : index
 
-      if (index < 0 || index > this._currentMaxIndex) {
+      if (index < 0 || index > this._currentMaxIndex || isNaN(index)) {
         break
       }
 
@@ -897,7 +897,6 @@ export default class MNSTR {
 
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[dataIndexInc > 0 ? i : cells.length - 1 - i]
-
       if (needUpdateAllCells) {
         cell.__index = dataIndex
         position += this.getNodeHeight(cell) * dataIndexInc
