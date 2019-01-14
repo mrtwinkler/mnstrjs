@@ -37,8 +37,8 @@ require('mnstr')
 ```javascript
 new MNSTR({
   parentNode: document.body,
-  getData: () => ['The', 'quick', 'brown', ...]
-  getCellRenderer: () => {
+  getData: _ => ['The', 'quick', 'brown', ...]
+  getCellRenderer: element => {
     var node = document.createElement('span')
     node.innerHTML = element
     return node
