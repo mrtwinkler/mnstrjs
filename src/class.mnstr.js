@@ -210,7 +210,7 @@ export default class MNSTR {
 
   updateVirtualDOM () {
     return new Promise((resolve) => {
-      this.needUpdateVirtualDOM.call(this.context, this._vElements, () => resolve())
+      this.needUpdateVirtualDOM.call(this.context, [].concat(this._vElements), () => resolve())
     })
   }
 
@@ -221,8 +221,14 @@ export default class MNSTR {
   }
 
   removeVirtualElementForCell (cell) {
-    this._vElements
-      ? this._vElements.splice([].slice.call(this.getCells()).indexOf(cell), 1)
+    if (!this._vElements) {
+      return
+    }
+
+    const index = this._vElements.findIndex(vElement => vElement.element === cell.__element)
+
+    index > -1
+      ? this._vElements.splice(index, 1)
       : void 0
   }
 
@@ -247,21 +253,40 @@ export default class MNSTR {
     }
   }
 
-  syncCellSortingWithDOM (position, dataIndex) {
-    const cells = this.getCells()
+  async syncVDOMToInternalState () {
+    let cellsSorted = this.getCellsSorted()
 
-    for (let i = 0; i < cells.length; i++) {
-      const cell = cells[i]
+    if (this._vElements.length === 0 || cellsSorted.length === 0) {
+      return
+    }
 
-      position !== void 0
-        ? this.setNodeTop(cell, position)
-        : void 0
+    let position = this.getNodeTop(cellsSorted[0])
+    await this.updateVirtualDOM()
 
-      cell.__index = dataIndex
+    // Iterate cells and update their data according to current vdom elements
 
-      position = position || 0
+    const cellsDOM = this.getCells()
+
+    for (let i = 0; i < cellsDOM.length; i++) {
+      const cell = cellsDOM[i]
+      const vElement = this._vElements[i]
+
+      cell.__index = vElement.index
+      cell.__element = vElement.element
+      cell.__level = vElement.level
+      cell.dataset.level = vElement.level
+    }
+
+    this.updateCellsSorted()
+    cellsSorted = this.getCellsSorted()
+
+    // Iterate sorted cells and reposition
+
+    for (let i = 0; i < cellsSorted.length; i++) {
+      const cell = cellsSorted[i]
+      this.setNodeTop(cell, position)
+      this.setNodeHeight(cell)
       position += this.getNodeHeight(cell)
-      dataIndex++
     }
   }
 
@@ -750,22 +775,14 @@ export default class MNSTR {
       }
     }
 
-    if (this.virtualEnvironment && this._vElements && this._vElements.length !== this.getCells().length) {
-      if (sortedCells.length > 0) {
-        const firstCellTop = this.getNodeTop(sortedCells[0])
-        const firstCellDataIndex = sortedCells[0].__index
-
-        this.sortVirtualElements()
-        await this.updateVirtualDOM()
-        this.syncCellSortingWithDOM(firstCellTop, firstCellDataIndex)
-      } else {
-        await this.updateVirtualDOM()
-      }
-    }
+    this.virtualEnvironment && didRemoveCell
+      ? await this.syncVDOMToInternalState()
+      : void 0
 
     this.updateCellsSorted()
     this.updateCellsAverages()
     this.updateListBounds()
+    this.updateFirstAndLastCellInViewport()
 
     return didRemoveCell
   }
@@ -942,7 +959,7 @@ export default class MNSTR {
       return didUpdateAnyCell
     }
 
-    if (needUpdateLowestCellHeight || updatingAllCells) {
+    if (!needUpdateAllCells && (needUpdateLowestCellHeight || updatingAllCells)) {
       this.updateCellsAverages()
       didUpdateAnyCell = await this.addCellsIfNeeded() || didUpdateAnyCell
       didUpdateAnyCell = await this.removeCellsIfNeeded() || didUpdateAnyCell
