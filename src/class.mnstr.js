@@ -43,9 +43,6 @@ export default class MNSTR {
     // Thresholds at which cell reusing will be triggered.
     this.thresholdRatio = 0.5
 
-    // If true, parent containers will not scroll if the wheel-event is triggered on this list. Strangely, this causes rendering issues when resizing cells manually. So it's set to false by default.
-    this.preventWheelBubbling = false
-
     // Use transform instead of top to position cells. When using transform (default), z-index will break when trying to overlap subsequent cells. Using top will negatively impact performance, since we don't render cells on their own layer anymore.
     this.useTransform = true
 
@@ -522,33 +519,6 @@ export default class MNSTR {
       return
     }
     this._scrollNode.addEventListener('scroll', (e) => this.rAF(this.onScroll, 'onscroll', e))
-
-    this.preventWheelBubbling
-      ? this._scrollNode.addEventListener('wheel', this.onWheel)
-      : void 0
-  }
-
-  onWheel (e) {
-    if (!this._scrollNode) {
-      return
-    }
-    const d = e.deltaY
-    const didReachTop = d < 0 && this._scrollNode.scrollTop === 0
-    const didReachBottom = d > 0 && this._scrollNode.scrollTop >= this.getNodeHeight(this._listNode) - this.getNodeHeight(this._scrollNode)
-    this._didScrollToBounds = didReachTop || didReachBottom
-
-    this._didScrollToBounds
-      ? e.preventDefault()
-      : void 0
-
-    // There is a chance that there might occour strange rendering issues which
-    // result in a visible, but non existing gap at the top of the list.
-    // "Scrolling" the list by 1 pixel does resolve this issue.
-
-    if (didReachTop) {
-      this.setScrollPosition(1)
-      this.setScrollPosition(0)
-    }
   }
 
   onScroll (e) {
