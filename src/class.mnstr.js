@@ -31,6 +31,9 @@ export default class MNSTR {
     // Element at whichs position the list will initially be rendered. If not set, the list will render at its top.
     this.initialScrollToElement = void 0
 
+    // Options for scrolling to the initial visible element. Possible props are: smooth:boolean, bottom:boolean, offset:float
+    this.initialScrollToOptions = void 0
+
     // If true, an iFrame will be used for each cell to observe if the bounds change. Use this, if cell bounds are highly volatile. Caution: iFrame rendering is very expensive. This might cause initial rendering delays.
     this.observeCellBounds = false
 
@@ -73,6 +76,7 @@ export default class MNSTR {
     this._currentMaxIndex = 0
     this._initialScrollToElement = void 0
     this._cachedScrollToElement = void 0
+    this._cachedScrollToOptions = void 0
     this._firstInBoundsElement = void 0
     this._lastInBoundsElement = void 0
     this._frameRequests = {}
@@ -96,6 +100,7 @@ export default class MNSTR {
 
     this._initialScrollToElement = this.initialScrollToElement
     this._cachedScrollToElement = this._initialScrollToElement
+    this._cachedScrollToOptions = this.initialScrollToOptions
 
     this.renderOnInitialize
       ? this.render()
@@ -113,6 +118,7 @@ export default class MNSTR {
     this._averageCellHeight = 1
     this._currentMaxIndex = 0
     this._cachedScrollToElement = void 0
+    this._cachedScrollToOptions = void 0
     this._frameRequests = {}
     this._cellsSorted = []
     this._expandInformations = []
@@ -129,6 +135,17 @@ export default class MNSTR {
     this.needUpdate()
     this.setScrollPosition(0)
     this.rUpdateCells()
+  }
+
+  exportRestoreData () {
+    const first = this.getCellsSorted()[0]
+
+    return {
+      scrollTop: this.getScrollPosition(),
+      index: first.__index,
+      position: this.getNodeTop(first),
+      height: this.getNodeHeight(this._listNode)
+    }
   }
 
   /**
@@ -156,7 +173,7 @@ export default class MNSTR {
 
     this._scrollNode = document.createElement('div')
     this._scrollNode.classList.add(this.className)
-    this._scrollNode.setAttribute('style', 'overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-scrolling: touch; position: relative;')
+    this._scrollNode.setAttribute('style', 'overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-scrolling: touch; position: relative; will-change: transform;')
 
     this.parentNode = parentNode || this.parentNode || document.body
     this.parentNode.appendChild(this._scrollNode)
@@ -254,17 +271,25 @@ export default class MNSTR {
   }
 
   async syncVDOMToInternalState () {
-    let cellsSorted = this.getCellsSorted()
+    // Sort vElements by index
+    const sortedVElements = this._vElements.slice(0).sort((a, b) => a.index - b.index)
 
-    if (this._vElements.length === 0 || cellsSorted.length === 0) {
+    // Get first index
+    const firstIndex = sortedVElements[0].index
+
+    // Find cell in sorted cells with that index
+    // This cell will be our repositioning starting point
+    const cell = this.getCellsSorted().find(cell => cell.__index === firstIndex)
+
+    if (!cell) {
       return
     }
 
-    let position = this.getNodeTop(cellsSorted[0])
+    let position = this.getNodeTop(cell)
+
+    // Update VDOM now
+
     await this.updateVirtualDOM()
-
-    // Iterate cells and update their data according to current vdom elements
-
     const cellsDOM = this.getCells()
 
     for (let i = 0; i < cellsDOM.length; i++) {
@@ -277,13 +302,13 @@ export default class MNSTR {
       cell.dataset.level = vElement.level
     }
 
+    // Now iterate over updated sorted cells and reposition them
+
     this.updateCellsSorted()
-    cellsSorted = this.getCellsSorted()
+    const cells = this.getCellsSorted()
 
-    // Iterate sorted cells and reposition
-
-    for (let i = 0; i < cellsSorted.length; i++) {
-      const cell = cellsSorted[i]
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i]
       this.setNodeTop(cell, position)
       this.setNodeHeight(cell)
       position += this.getNodeHeight(cell)
@@ -295,6 +320,10 @@ export default class MNSTR {
    */
 
   getNodeHeight (node, computed) {
+    if (!node) {
+      return 0
+    }
+
     return computed || !node.__nodeHeight
       ? this.setNodeHeight(node, computed)
       : node.__nodeHeight || 0
@@ -313,7 +342,13 @@ export default class MNSTR {
   }
 
   getNodeTop (node) {
-    return node.__nodeTop || 0
+    if (!node) {
+      return 0
+    }
+
+    return node
+      ? node.__nodeTop || 0
+      : 0
   }
 
   setNodeTop (node, value) {
@@ -328,7 +363,9 @@ export default class MNSTR {
   }
 
   getNodeBottom (node) {
-    return this.getNodeTop(node) + this.getNodeHeight(node)
+    return node
+      ? this.getNodeTop(node) + this.getNodeHeight(node)
+      : 0
   }
 
   getFirstCellTop () {
@@ -384,7 +421,9 @@ export default class MNSTR {
    */
 
   getCells () {
-    return this._listNode.children
+    return this._listNode
+      ? this._listNode.children
+      : void 0
   }
 
   getCellsSorted () {
@@ -395,6 +434,11 @@ export default class MNSTR {
 
   updateCellsSorted () {
     const cells = this.getCells()
+
+    if (!cells) {
+      return
+    }
+
     this._cellsSorted = [].slice.call(cells)
     this._cellsSorted.sort((a, b) => a.__index - b.__index)
     return this._cellsSorted
@@ -462,14 +506,21 @@ export default class MNSTR {
    */
 
   getScrollPosition () {
-    return this._scrollNode.scrollTop
+    return this._scrollNode ? this._scrollNode.scrollTop : undefined
   }
 
   setScrollPosition (value) {
+    if (!this._scrollNode) {
+      return false
+    }
+
     this._scrollNode.scrollTop = value
   }
 
   initScrollListener () {
+    if (!this._scrollNode) {
+      return
+    }
     this._scrollNode.addEventListener('scroll', (e) => this.rAF(this.onScroll, 'onscroll', e))
 
     this.preventWheelBubbling
@@ -478,6 +529,9 @@ export default class MNSTR {
   }
 
   onWheel (e) {
+    if (!this._scrollNode) {
+      return
+    }
     const d = e.deltaY
     const didReachTop = d < 0 && this._scrollNode.scrollTop === 0
     const didReachBottom = d > 0 && this._scrollNode.scrollTop >= this.getNodeHeight(this._listNode) - this.getNodeHeight(this._scrollNode)
@@ -498,6 +552,10 @@ export default class MNSTR {
   }
 
   onScroll (e) {
+    if (!this._scrollNode) {
+      return
+    }
+
     this._lastScrollPosition = this._scrollNode.scrollTop
     this._didScrollToBounds = this._scrollNode.scrollTop <= this._lastScrollPosition || this._scrollNode.scrollTop >= this._lastScrollPosition
     this.rUpdateCells()
@@ -513,50 +571,62 @@ export default class MNSTR {
     this.scrollToElement(last.element)
   }
 
-  scrollToElement (element) {
-    this.rAF(async () => {
-      // Check if element is already rendered. If so,
-      // just scroll to it. Done.
+  async scrollToElement (element, options) {
+    const opts = Object.assign({
+      smooth: false,
+      bottom: false,
+      offset: 0
+    }, options)
 
-      const cell = this.findCellByElement(element)
+    // Check if element is already rendered. If so,
+    // just scroll to it. Done.
 
-      // If not, try to reposition cells to match thresholds,
-      // it may be that the requested cell will be rendered then.
+    const cell = this.findCellByElement(element)
 
-      if (!cell) {
-        await this.updateCells()
-      }
+    // If not, try to reposition cells to match thresholds,
+    // it may be that the requested cell will be rendered then.
 
-      if (cell) {
-        this.setScrollPosition(this.getNodeTop(cell))
-        delete this._cachedScrollToElement
-        delete this._initialScrollToElement
-        return
-      }
+    if (!cell) {
+      await this.updateCells()
+    }
 
-      // Cell is currently not rendered. Need to estimate
-      // its position, scroll to it, render all cells and adjust
-      // the estimated position accordingly.
+    if (cell) {
+      const position = opts.bottom
+        ? this.getNodeTop(cell) - this.getNodeHeight(this._scrollNode) + this.getNodeHeight(cell) + opts.offset
+        : this.getNodeTop(cell) + opts.offset
 
-      const index = this.getIndexForElement(element)
+      this.setScrollPosition(position)
 
-      if (index < 0) {
-        return
-      }
+      delete this._cachedScrollToElement
+      delete this._cachedScrollToOptions
+      delete this._initialScrollToElement
 
-      this._cachedScrollToElement = element
+      return
+    }
 
-      if (this._cellsSorted.length === 0) {
-        return
-      }
+    // Cell is currently not rendered. Need to estimate
+    // its position, scroll to it, render all cells and adjust
+    // the estimated position accordingly.
 
-      this.setScrollPosition(index * this._averageCellHeight)
-    })
+    const index = this.getIndexForElement(element)
+
+    if (index < 0) {
+      return
+    }
+
+    this._cachedScrollToElement = element
+    this._cachedScrollToOptions = opts
+
+    if (this._cellsSorted.length === 0) {
+      return
+    }
+
+    this.setScrollPosition(index * this._averageCellHeight)
   }
 
-  scrollToCachedScrollElement () {
+  async scrollToCachedScrollElement () {
     this._cachedScrollToElement
-      ? this.scrollToElement(this._cachedScrollToElement)
+      ? await this.scrollToElement(this._cachedScrollToElement, this._cachedScrollToOptions)
       : void 0
   }
 
@@ -574,10 +644,31 @@ export default class MNSTR {
     return this
   }
 
-  update (forceUpdate, retainPosition) {
+  update (brutalForce, retainPos) {
     this.needUpdate()
-    this.rUpdateCells(true, forceUpdate, retainPosition)
+    this.rUpdateCells(true, brutalForce, retainPos)
     return this
+  }
+
+  async restoreData (data) {
+    this.needUpdate()
+
+    if (this._currentMaxIndex === -1) {
+      return
+    }
+
+    const cell = await this.addCell(data.index, data.position)
+
+    if (cell) {
+      this.setNodeHeight(this._listNode, false, data.height, true)
+      this.setScrollPosition(data.scrollTop)
+    }
+
+    delete this._initialScrollToElement
+    delete this._cachedScrollToElement
+
+    this.updateCellsAverages()
+    this.updateCells()
   }
 
   getElementAndLevelAtIndex (index) {
@@ -693,282 +784,237 @@ export default class MNSTR {
     Cell handling
   **/
 
-  async addCellsIfNeeded () {
-    let didAddCell = false
-
-    while (this.getCellsSorted().length === 0 || this._lowestCellHeight * (this.getCells().length - 2) < this.getMinimumListNodeHeight()) {
-      let firstRenderIndex = this.getFirstRenderIndex()
-      let lastRenderIndex = this.getLastRenderIndex()
-      const placeCellAtBottom = lastRenderIndex < this._currentMaxIndex
-
-      if (lastRenderIndex >= this._currentMaxIndex && firstRenderIndex <= 0) {
-        break
-      }
-
-      let index = placeCellAtBottom
-        ? ++lastRenderIndex
-        : --firstRenderIndex
-
-      index = this._initialScrollToElement && this.getCellsSorted().length === 0
-        ? this.getIndexForElement(this._initialScrollToElement)
-        : index
-
-      if (index < 0 || index > this._currentMaxIndex || isNaN(index)) {
-        break
-      }
-
-      let cell = !this.virtualEnvironment
-        ? this.renderCell()
-        : void 0
-
-      cell = await this.updateCell(cell, index)
-
-      cell.__frameNode = this.virtualEnvironment && this.observeCellBounds
-        ? this.renderIFrame(cell, this.onResizeCell)
-        : cell.__frameNode
-
-      this.setNodeHeight(cell)
-
-      let cellTop = placeCellAtBottom
-        ? this.getLastCellBottom()
-        : this.getFirstCellTop() - this.getNodeHeight(cell)
-
-      this.setNodeTop(cell, cellTop)
-      this.updateCellsAverages()
-      this.updateCellsSorted()
-      this.updateListBounds()
-
-      didAddCell = true
-    }
-
-    if (this._initialScrollToElement) {
-      let top = this.getFirstRenderIndex() * this._averageCellHeight
-      const cells = this.getCellsSorted()
-
-      for (let i = 0; i < cells.length; i++) {
-        const c = cells[i]
-        this.setNodeTop(c, top)
-        top += this.getNodeHeight(c)
-      }
-
-      this.updateListBounds()
-    }
-
-    return didAddCell
-  }
-
-  async removeCellsIfNeeded () {
-    const sortedCells = this.getCellsSorted()
-    const minListHeight = this.getMinimumListNodeHeight()
-    let didRemoveCell = false
-
-    for (let i = sortedCells.length - 1; i >= 0; i--) {
-      const cell = sortedCells[i]
-
-      if (cell.__index < 0 || cell.__index > this._currentMaxIndex || (i === sortedCells.length - 1 && this._lowestCellHeight * (sortedCells.length - 2) - this.getNodeHeight(cell) > minListHeight)) {
-        this.virtualEnvironment
-          ? this.removeVirtualElementForCell(cell)
-          : this._listNode.removeChild(cell)
-
-        sortedCells.splice(i, 1)
-        didRemoveCell = true
-      }
-    }
-
-    this.virtualEnvironment && didRemoveCell
-      ? await this.syncVDOMToInternalState()
-      : void 0
-
-    this.updateCellsSorted()
-    this.updateCellsAverages()
-    this.updateListBounds()
-    this.updateFirstAndLastCellInViewport()
-
-    return didRemoveCell
-  }
-
-  rUpdateCells (needUpdateAllCells, forceReRender, retainPosition, preventNeedRepositioning) {
-    this.rAF(this.updateCells, 'updatecells', needUpdateAllCells, forceReRender, retainPosition, preventNeedRepositioning)
-  }
-
-  async updateCells (needUpdateAllCells, forceReRender, retainPosition, preventNeedRepositioning) {
-    if (this._updatingCells) {
-      return
-    }
-
+  async maintainCellCount () {
     const scrollTop = this.getScrollPosition()
-    const topThreshold = this.getTopRenderThreshold()
-    const bottomThreshold = this.getBottomRenderThreshold()
-    const firstCellTop = this.getFirstCellTop()
-    const lastCellBottom = this.getLastCellBottom()
-    const firstRenderIndex = this.getFirstRenderIndex()
-    const lastRenderIndex = this.getLastRenderIndex()
-    const topCellIsInTopThreshold = firstCellTop > scrollTop + topThreshold
-    const topCellIsBeyondBottomThreshold = firstCellTop > scrollTop + bottomThreshold
-    const bottomCellIsBeyondTopThreshold = lastCellBottom < scrollTop + topThreshold
-    const bottomCellIsInBottomThreshold = lastCellBottom < scrollTop + bottomThreshold
+    const thresholdTop = scrollTop + this.getTopRenderThreshold()
+    const thresholdBot = scrollTop + this.getBottomRenderThreshold()
+    const cells = this.getCellsSorted()
+    const first = cells[0]
+    const last = cells[cells.length - 1]
+    const actualListHeight = this.getNodeBottom(last) - this.getNodeTop(first)
+    const minimumListHeight = this.getMinimumListNodeHeight()
+    const didNotMeetMinimumHeight = minimumListHeight > actualListHeight
 
-    let dataIndex = 0
-    let dataIndexInc = 1
-    let position = 0
-    let needRePositioning = false
-    let updatingAllCells = false
-    let didUpdateAnyCell = false
+    let didChangeAnything = false
 
-    if (!topCellIsInTopThreshold && !bottomCellIsInBottomThreshold && !needUpdateAllCells) {
-      // Top cell is beyond top and bottom cell beyond bottom threshold,
-      // which means we don't need to do anything. Unless we want to iterate all cells anyway.
-      this.updateFirstAndLastCellInViewport()
+    switch (true) {
+      // No cells at all. Add one.
+      case !first && this._currentMaxIndex > -1:
+        const index = this._initialScrollToElement ? this.getIndexForElement(this._initialScrollToElement) : 0
+        const cell = await this.addCell(index, 0)
+
+        if (cell) {
+          this.setNodeTop(cell, this.getNodeHeight(cell) * index)
+        }
+        didChangeAnything = true
+        break
+
+      // Add cell to bottom if there is no cell or if there is room at the bottom
+      case last.__index < this._currentMaxIndex && (didNotMeetMinimumHeight || this.getNodeBottom(last) < thresholdBot):
+        await this.addCell(last.__index + 1, this.getNodeBottom(last))
+        didChangeAnything = true
+        break
+
+      // Add cell to top if there is room
+      case first.__index > 0 && (didNotMeetMinimumHeight || this.getNodeTop(first) > thresholdTop):
+        await this.addCell(first.__index - 1, this.getNodeTop(first), true)
+        didChangeAnything = true
+        break
+
+      // Remove dispensable cell at the top
+      case this.getNodeBottom(first) < thresholdTop && actualListHeight - this.getNodeHeight(first) > minimumListHeight:
+        await this.removeCell(first)
+        didChangeAnything = true
+        break
+
+      // Remove dispensable cell at the bottom
+      case this.getNodeTop(last) > thresholdBot && actualListHeight - this.getNodeHeight(last) > minimumListHeight:
+        await this.removeCell(last)
+        didChangeAnything = true
+        break
+    }
+
+    if (didChangeAnything) {
+      this.updateCellsSorted()
+      this.updateCellsAverages()
+      this.updateListBounds()
+
+      if (this._initialScrollToElement) {
+        await this.scrollToCachedScrollElement()
+      }
+
+      await this.updateCells()
+      await this.maintainCellCount()
+    }
+  }
+
+  async addCell (index, position, subtractHeight = false) {
+    if (index < 0 || index > this._currentMaxIndex) {
       return
-    } else if (topCellIsBeyondBottomThreshold || bottomCellIsBeyondTopThreshold) {
-      // All cells are completely beyond one of the thresholds, which means we have to estimate
-      // a new top and first render index and will update all cells accordingly.
-      const estimatedIndex = Math.round(Math.max(scrollTop + topThreshold, 0) / this._averageCellHeight)
-      dataIndex = Math.min(estimatedIndex, this._currentMaxIndex - this.getCellsSorted().length + dataIndexInc)
-      position = dataIndex * this._averageCellHeight
-      updatingAllCells = true
-    } else if (bottomCellIsInBottomThreshold && lastRenderIndex < this._currentMaxIndex && !preventNeedRepositioning) {
-      // Bottom cell reached bottom threshold, which means we need to move some cells from
-      // the top to the bottom.
-      dataIndex = lastRenderIndex + dataIndexInc
-      position = lastCellBottom
-      needRePositioning = true
-    } else if (topCellIsInTopThreshold && (firstRenderIndex > 0 || needUpdateAllCells) && !preventNeedRepositioning) {
-      // Top cell reached top threshold, which means we need to move some cells from
-      // the bottom to the top.
-      dataIndexInc = -1
-      dataIndex = firstRenderIndex + dataIndexInc
-      position = firstCellTop
-      needRePositioning = true
-    } else if (needUpdateAllCells) {
-      dataIndex = firstRenderIndex
-      position = firstCellTop
-      updatingAllCells = true
+    }
+
+    const cell = this.virtualEnvironment
+      ? await this.updateCell(void 0, index)
+      : await this.updateCell(this.renderCell(), index)
+
+    if (!cell) {
+      return
+    }
+
+    cell.__frameNode = this.virtualEnvironment && this.observeCellBounds
+      ? this.renderIFrame(cell, this.onResizeCell)
+      : cell.__frameNode
+
+    this.setNodeHeight(cell)
+    this.setNodeTop(cell, position - (subtractHeight ? this.getNodeHeight(cell) : 0))
+
+    return cell
+  }
+
+  async removeCell (cell) {
+    if (this.virtualEnvironment) {
+      this.removeVirtualElementForCell(cell)
+      await this.syncVDOMToInternalState()
     } else {
-      this.updateFirstAndLastCellInViewport()
+      this._listNode.removeChild(cell)
+    }
+  }
+
+  rUpdateCells (force, brutalForce, retainPos) {
+    this.rAF(this.updateCells, 'updatecells', force, brutalForce, retainPos)
+  }
+
+  async updateCells (force, brutalForce, retainPosOnForce) {
+    if (this._updatingCells) {
       return
     }
 
     this._updatingCells = true
 
-    let positionDeviation = 0
+    const scrollTop = this.getScrollPosition()
+    const thresholdTop = scrollTop + this.getTopRenderThreshold()
+    const thresholdBot = scrollTop + this.getBottomRenderThreshold()
+    const cells = this.getCellsSorted().slice(0)
+    let forceIterator = {}
+    let updatedAnyCell = false
 
-    if (needUpdateAllCells) {
-      if (retainPosition) {
+    // Force preparation
+
+    if (force) {
+      forceIterator.index = 0
+      forceIterator.pos = 0
+
+      if (retainPosOnForce) {
         const indexDeviation = this.findCellIndexDeviation()
-        positionDeviation = Math.round(indexDeviation * this._averageCellHeight)
-        dataIndex += indexDeviation
-
-        if (bottomCellIsInBottomThreshold && lastRenderIndex + indexDeviation >= this._currentMaxIndex) {
-          dataIndex = firstRenderIndex + indexDeviation
-          position = firstCellTop
-        }
+        const posDeviation = indexDeviation * this._averageCellHeight
+        forceIterator.index = cells[0].__index + indexDeviation
+        forceIterator.pos = this.getNodeTop(cells[0]) + posDeviation
+        this.updateListBounds()
+        this.setScrollPosition(scrollTop + posDeviation)
       } else {
-        dataIndex = 0
-        position = 0
-        needRePositioning = false
-        updatingAllCells = true
-        needUpdateAllCells = false
         this.setScrollPosition(0)
       }
     }
 
-    // In the first step, shift cells so that we exceed both thresholds. (if possible).
-    // If we want to update all cells and retain the scroll position,
-    // we only update the shifted cells indexes in this step. This involves no DOM operations.
+    // If we have to estimate, enter force mode and prepare
 
-    didUpdateAnyCell = await this.updateCellsCore(dataIndex, dataIndexInc, position, forceReRender, needRePositioning, needUpdateAllCells, updatingAllCells, scrollTop, topThreshold, bottomThreshold)
-
-    if (needUpdateAllCells && retainPosition) {
-      dataIndex = dataIndexInc > 0
-        ? this.getFirstRenderIndex()
-        : this.getLastRenderIndex()
-
-      position = dataIndexInc > 0
-        ? this.getFirstCellTop() + positionDeviation
-        : this.getLastCellBottom() + positionDeviation
-
-      didUpdateAnyCell = await this.updateCellsCore(dataIndex, dataIndexInc, position, forceReRender, false, false, true, scrollTop, topThreshold, bottomThreshold) || didUpdateAnyCell
+    if (cells && cells.length && (this.getNodeTop(cells[0]) > thresholdBot || this.getNodeBottom(cells[cells.length - 1]) < thresholdTop)) {
+      force = true
+      forceIterator.index = Math.min(Math.round(Math.max(thresholdTop, 0) / this._averageCellHeight), this._currentMaxIndex - cells.length + 1)
+      forceIterator.pos = forceIterator.index * this._averageCellHeight + this.getTopRenderThreshold()
     }
 
-    this.updateListBounds()
-
-    positionDeviation
-      ? this.setScrollPosition(this.getScrollPosition() + positionDeviation)
-      : void 0
-
-    didUpdateAnyCell
-      ? this.emitEvent('cellsUpdated', this._cellsSorted, this)
-      : void 0
-
-    this._updatingCells = false
-    this.scrollToCachedScrollElement()
-    this.updateFirstAndLastCellInViewport()
-  }
-
-  async updateCellsCore (dataIndex, dataIndexInc, position, forceReRender, needRePositioning, needUpdateAllCells, updatingAllCells, scrollTop, topThreshold, bottomThreshold) {
-    const cells = this.getCellsSorted()
-    let needUpdateLowestCellHeight = false
-    let relocatingCellsComplete = false
-    let didUpdateAnyCell = false
+    // Core Loop
 
     for (let i = 0; i < cells.length; i++) {
-      const cell = cells[dataIndexInc > 0 ? i : cells.length - 1 - i]
-      if (needUpdateAllCells) {
-        cell.__index = dataIndex
-        position += this.getNodeHeight(cell) * dataIndexInc
-      } else if (await this.updateCell(cell, dataIndex, forceReRender) !== void 0 || updatingAllCells) {
-        this.setNodeHeight(cell)
+      const first = cells[0]
+      const last = cells[cells.length - 1]
+      const cell = cells[i]
 
-        if (dataIndexInc > 0) {
-          this.setNodeTop(cell, position)
-          position += dataIndex > -1 ? this.getNodeHeight(cell) : 0
-        } else {
-          position -= this.getNodeHeight(cell)
-          this.setNodeTop(cell, position)
-        }
+      // We force which means we iterate all cells from top to bottom along the force iterator
+      if (force) {
+        // Special case where we are at the top of the list and new data arrived above that. We have to
+        // take into account the discrepancy in the height of the first cell.
 
-        needUpdateLowestCellHeight = needUpdateLowestCellHeight || (this.getNodeHeight(cell) > 0 && this.getNodeHeight(cell) < this._lowestCellHeight)
-        didUpdateAnyCell = true
-      }
-
-      dataIndex += dataIndexInc
-
-      if (!relocatingCellsComplete && ((dataIndexInc > 0 && position > scrollTop + bottomThreshold) || (dataIndexInc < 0 && position < scrollTop + topThreshold))) {
-        relocatingCellsComplete = true
-
-        dataIndex -= needUpdateAllCells && needRePositioning
-          ? cells.length * dataIndexInc
+        const cellHeight = cell.__index === 0 && forceIterator.index > 0
+          ? this.getNodeHeight(cell)
           : 0
 
-        if (!needUpdateAllCells && !updatingAllCells) {
-          break
+        await this.updateCell(cell, forceIterator.index, brutalForce)
+        this.setNodeHeight(cell)
+
+        // Adding height discrepancy if needed.
+
+        forceIterator.pos += cellHeight
+          ? cellHeight - this.getNodeHeight(cell)
+          : 0
+
+        this.setNodeTop(cell, forceIterator.pos)
+        forceIterator.index += 1
+        forceIterator.pos += this.getNodeHeight(cell)
+        updatedAnyCell = true
+
+      // Cell is above top threshold and there is room at the bottom => move to the bottom
+      } else if (last.__index < this._currentMaxIndex && this.getNodeBottom(cell) < thresholdTop && this.getNodeBottom(last) < thresholdBot) {
+        await this.updateCell(cell, last.__index + 1, brutalForce)
+        this.setNodeHeight(cell)
+        this.setNodeTop(cell, this.getNodeBottom(last))
+        cells.push(cells.shift())
+        updatedAnyCell = true
+
+      // Cell is below bottom threshold and there is room at the top => move to the top
+      } else if (i === cells.length - 1 && first.__index > 0 && this.getNodeTop(cell) > thresholdBot && this.getNodeTop(first) > thresholdTop) {
+        await this.updateCell(cell, first.__index - 1, brutalForce)
+        this.setNodeHeight(cell)
+        this.setNodeTop(cell, this.getNodeTop(first) - this.getNodeHeight(cell))
+        cells.unshift(cells.pop())
+        updatedAnyCell = true
+
+        // Special cases for reaching scroll top 0 or data index 0
+
+        switch (true) {
+          // Reached top cell but there is space left
+          case cell.__index === 0 && this.getNodeTop(cell) > 0:
+            const deviation1 = this.getNodeTop(cell)
+            force = true
+            forceIterator.index = cell.__index
+            forceIterator.pos = 0
+            this.setScrollPosition(scrollTop - deviation1)
+            i = -1
+            break
+
+          // Reached top position. make sure there is enough space
+          case this.getNodeTop(cell) === 0:
+            const deviation = this._averageCellHeight * cell.__index
+            force = true
+            forceIterator.index = cell.__index
+            forceIterator.pos = deviation
+            this.setScrollPosition(scrollTop + deviation)
+            i = -1
+            break
+
+          default:
+            i--
         }
       }
-
-      if (!needUpdateAllCells && (dataIndex > this._currentMaxIndex || dataIndex < 0)) {
-        break
-      }
     }
 
-    this.updateCellsSorted()
+    // Aftermath
 
-    if (!needUpdateAllCells && ((dataIndex <= 0 && dataIndexInc === -1 && position !== 0) || position < 0)) {
-      didUpdateAnyCell = await this.updateCellsCore(0, 1, 0, false, false, false, true, 0, topThreshold, bottomThreshold) || didUpdateAnyCell
-      this.setScrollPosition(0)
-      return didUpdateAnyCell
-    }
-
-    if (!needUpdateAllCells && (needUpdateLowestCellHeight || updatingAllCells)) {
+    if (!cells || !cells.length || updatedAnyCell) {
+      this.updateCellsSorted()
+      await this.maintainCellCount()
       this.updateCellsAverages()
-      didUpdateAnyCell = await this.addCellsIfNeeded() || didUpdateAnyCell
-      didUpdateAnyCell = await this.removeCellsIfNeeded() || didUpdateAnyCell
+      this.updateListBounds()
+      this.emitEvent('cellsUpdated', this.getCellsSorted(), this)
     }
 
-    return didUpdateAnyCell
+    this.scrollToCachedScrollElement()
+    this.updateFirstAndLastCellInViewport()
+    this._updatingCells = false
   }
 
-  async updateCell (cell, index, force) {
+  async updateCell (cell, index, brutalForce) {
     const elementAndLevel = this.getElementAndLevelAtIndex(index)
 
     if (!elementAndLevel) {
@@ -978,7 +1024,12 @@ export default class MNSTR {
     const element = elementAndLevel.element
     const level = elementAndLevel.level
 
-    if (!element || (cell && element === cell.__element && !force)) {
+    if (!element || (cell && element === cell.__element && !brutalForce)) {
+      if (cell && element === cell.__element) {
+        cell.__index = index
+        cell.__level = level
+        cell.dataset.level = level
+      }
       return
     }
 
@@ -1076,7 +1127,7 @@ export default class MNSTR {
   }
 
   cellBoundsUpdated () {
-    this.rUpdateCells(true, false, true, true)
+    this.rUpdateCells(true, false, true)
   }
 
   updateFirstAndLastCellInViewport () {
@@ -1148,7 +1199,7 @@ export default class MNSTR {
   onResizeScrollNode (e) {
     this.disableAllCellsResizeObserving()
     this.rAF(async () => {
-      await this.updateCells(true, false, true, true)
+      await this.updateCells(true, false, true)
       this.setNodeHeight(this._scrollNode)
       this.enableAllCellsResizeObserving()
     }, 'resizelist')
