@@ -1,4 +1,4 @@
-export default class MNSTR {
+class MNSTR {
   /**
    * Construct, reset, destruct.
    */
@@ -643,7 +643,7 @@ export default class MNSTR {
     return this.getElementChildren !== void 0
   }
 
-  getElementChildren (element) {
+  getChildrenForElement (element) {
     return this.canHasChildren()
       ? this.getElementChildren.call(this.context, element, this)
       : void 0
@@ -1189,7 +1189,7 @@ export default class MNSTR {
       active: true,
       element: element,
       elementIndex: parentInfo ? parentInfo.elementChildren.indexOf(element) : this._data.indexOf(element),
-      elementChildren: this.getElementChildren(element),
+      elementChildren: this.getChildrenForElement(element),
       elementParent: parentInfo ? parentInfo.element : void 0,
       index: void 0,
       level: parentInfo ? parentInfo.level + 1 : 1,
@@ -1255,7 +1255,7 @@ export default class MNSTR {
     for (let i = 0; i < this._expandInformations.length; i++) {
       const info = this._expandInformations[i]
       const data = info.elementParent
-        ? this._getElementChildren(info.elementParent)
+        ? this.getChildrenForElement(info.elementParent)
         : this._data
       let parentIsDeleted = false
 
@@ -1267,7 +1267,7 @@ export default class MNSTR {
         info.elementChildren = []
         infosToDelete.push(info)
       } else {
-        info.elementChildren = this._getElementChildren(info.element)
+        info.elementChildren = this.getChildrenForElement(info.element)
       }
     }
 
