@@ -29,7 +29,7 @@ require('mnstr')
 ```
 **Browser**
 ```html
-<script type="text/javascript" src="dist/mnstr.min.js"></script>
+<script type="text/javascript" src="dist/mnstr.umd.js"></script>
 ```
 
 # Usage
