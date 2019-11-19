@@ -11,6 +11,7 @@ MNSTR is designed to render large lists of data in no time by only rendering wha
 * no dependencies
 * native browser scrolling
 * support for tree data
+* restorable state
 * responsive
 
 # Install
