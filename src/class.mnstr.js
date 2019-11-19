@@ -131,7 +131,7 @@ export default class MNSTR {
     this.rUpdateCells()
   }
 
-  exportRestoreData () {
+  exportRestoreState () {
     const first = this.getCellsSorted()[0]
 
     return {
@@ -579,7 +579,7 @@ export default class MNSTR {
     return this
   }
 
-  async restoreData (data) {
+  async restoreState (data) {
     this.needUpdate()
 
     if (this._currentMaxIndex === -1) {
