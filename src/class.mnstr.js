@@ -67,7 +67,6 @@ export default class MNSTR {
     this._scrollNode = void 0
     this._listNode = void 0
     this._events = {}
-    this._lastScrollPosition = 0
     this._lowestCellHeigh = Number.MAX_VALUE
     this._averageCellHeight = 1
     this._currentMaxIndex = 0
@@ -80,7 +79,6 @@ export default class MNSTR {
     this._cellsSorted = []
     this._vElements = []
     this._expandInformations = []
-    this._didScrollToBounds = false
     this._updatingCells = false
 
     // Init
@@ -110,7 +108,6 @@ export default class MNSTR {
 
   async reset () {
     this._data = []
-    this._lastScrollPosition = 0
     this._lowestCellHeight = Number.MAX_VALUE
     this._averageCellHeight = 1
     this._currentMaxIndex = 0
@@ -287,29 +284,23 @@ export default class MNSTR {
     // Update VDOM now
 
     await this.updateVirtualDOM()
-    const cellsDOM = this.getCells()
 
-    for (let i = 0; i < cellsDOM.length; i++) {
-      const cell = cellsDOM[i]
-      const vElement = this._vElements[i]
+    this.getCells().forEach((cell, index) => {
+      const vElement = this._vElements[index]
 
       cell.__index = vElement.index
       cell.__element = vElement.element
       cell.__level = vElement.level
       cell.dataset.level = vElement.level
-    }
+    })
 
     // Now iterate over updated sorted cells and reposition them
 
-    this.updateCellsSorted()
-    const cells = this.getCellsSorted()
-
-    for (let i = 0; i < cells.length; i++) {
-      const cell = cells[i]
+    this.updateCellsSorted().reduce((acc, cell) => {
       this.setNodeTop(cell, position)
       this.setNodeHeight(cell)
-      position += this.getNodeHeight(cell)
-    }
+      return acc + this.getNodeHeight(cell)
+    }, position)
   }
 
   /**
@@ -334,7 +325,6 @@ export default class MNSTR {
       : void 0
 
     node.__nodeHeight = value || computed ? node.getBoundingClientRect().height : node.offsetHeight
-    // node.__nodeHeight = value || computed ? parseFloat(window.getComputedStyle(node).height) : node.clientHeight
     return node.__nodeHeight
   }
 
@@ -365,18 +355,6 @@ export default class MNSTR {
       : 0
   }
 
-  getFirstCellTop () {
-    return this._cellsSorted && this._cellsSorted.length > 0
-      ? this.getNodeTop(this._cellsSorted[0])
-      : 0
-  }
-
-  getLastCellBottom () {
-    return this._cellsSorted && this._cellsSorted.length > 0
-      ? this.getNodeBottom(this._cellsSorted[this._cellsSorted.length - 1])
-      : 0
-  }
-
   /**
    * List queries (non scrolling)
    */
@@ -387,10 +365,14 @@ export default class MNSTR {
   }
 
   updateListBounds () {
-    const lastCellBottom = this.getLastCellBottom()
+    if (!this._cellsSorted || !this._cellsSorted.length) {
+      return
+    }
+
+    const lastCellBottom = this.getNodeBottom(this._cellsSorted[this._cellsSorted.length - 1])
     const listHeight = this.getNodeHeight(this._listNode)
 
-    if (this.getLastRenderIndex() === this._currentMaxIndex) {
+    if (this._cellsSorted[this._cellsSorted.length - 1].__index === this._currentMaxIndex) {
       if (lastCellBottom - listHeight !== 0) {
         this.setNodeHeight(this._listNode, false, lastCellBottom, true)
       }
@@ -439,18 +421,6 @@ export default class MNSTR {
     this._cellsSorted = [].slice.call(cells)
     this._cellsSorted.sort((a, b) => a.__index - b.__index)
     return this._cellsSorted
-  }
-
-  getFirstRenderIndex () {
-    return this._cellsSorted && this._cellsSorted.length > 0
-      ? this._cellsSorted[0].__index
-      : -1
-  }
-
-  getLastRenderIndex () {
-    return this._cellsSorted && this._cellsSorted.length > 0
-      ? this._cellsSorted[this._cellsSorted.length - 1].__index
-      : -1
   }
 
   /**
@@ -503,42 +473,31 @@ export default class MNSTR {
    */
 
   getScrollPosition () {
-    return this._scrollNode ? this._scrollNode.scrollTop : undefined
+    return this._scrollNode
+      ? this._scrollNode.scrollTop
+      : void 0
   }
 
   setScrollPosition (value) {
-    if (!this._scrollNode) {
-      return false
-    }
-
-    this._scrollNode.scrollTop = value
+    this._scrollNode
+      ? this._scrollNode.scrollTop = value
+      : void 0
   }
 
   initScrollListener () {
-    if (!this._scrollNode) {
-      return
-    }
-    this._scrollNode.addEventListener('scroll', (e) => this.rAF(this.onScroll, 'onscroll', e))
+    this._scrollNode
+      ? this._scrollNode.addEventListener('scroll', e => this.rUpdateCells())
+      : void 0
   }
 
-  onScroll (e) {
-    if (!this._scrollNode) {
-      return
-    }
-
-    this._lastScrollPosition = this._scrollNode.scrollTop
-    this._didScrollToBounds = this._scrollNode.scrollTop <= this._lastScrollPosition || this._scrollNode.scrollTop >= this._lastScrollPosition
-    this.rUpdateCells()
-  }
-
-  scrollToFirstElement () {
+  async scrollToFirstElement () {
     const first = this.getElementAndLevelAtIndex(0)
-    this.scrollToElement(first.element)
+    await this.scrollToElement(first.element)
   }
 
-  scrollToLastElement () {
+  async scrollToLastElement () {
     const last = this.getElementAndLevelAtIndex(this._currentMaxIndex)
-    this.scrollToElement(last.element)
+    await this.scrollToElement(last.element)
   }
 
   async scrollToElement (element, options) {
@@ -551,7 +510,7 @@ export default class MNSTR {
     // Check if element is already rendered. If so,
     // just scroll to it. Done.
 
-    const cell = this.findCellByElement(element)
+    const cell = this._cellsSorted.find(cell => cell.__element === element)
 
     // If not, try to reposition cells to match thresholds,
     // it may be that the requested cell will be rendered then.
@@ -676,16 +635,7 @@ export default class MNSTR {
   }
 
   updateCurrentMaxIndex () {
-    let expandLength = 0
-
-    for (let i = 0; i < this._expandInformations.length; i++) {
-      const expandInformation = this._expandInformations[i]
-
-      expandLength += expandInformation.active
-        ? expandInformation.elementChildren.length
-        : 0
-    }
-
+    const expandLength = this._expandInformations.reduce((acc, info) => acc + (info.active ? info.elementChildren.length : 0), 0)
     this._currentMaxIndex = this._data.length - 1 + expandLength
   }
 
@@ -792,13 +742,13 @@ export default class MNSTR {
         break
 
       // Remove dispensable cell at the top
-      case this.getNodeBottom(first) < thresholdTop && actualListHeight - this.getNodeHeight(first) > minimumListHeight:
+      case first.__index < 0 || (this.getNodeBottom(first) < thresholdTop && actualListHeight - this.getNodeHeight(first) > minimumListHeight):
         await this.removeCell(first)
         didChangeAnything = true
         break
 
       // Remove dispensable cell at the bottom
-      case this.getNodeTop(last) > thresholdBot && actualListHeight - this.getNodeHeight(last) > minimumListHeight:
+      case last.__index > this._currentMaxIndex || (this.getNodeTop(last) > thresholdBot && actualListHeight - this.getNodeHeight(last) > minimumListHeight):
         await this.removeCell(last)
         didChangeAnything = true
         break
@@ -1087,15 +1037,6 @@ export default class MNSTR {
     this._averageCellHeight = totalCellHeight / cells.length
   }
 
-  findCellByElement (element) {
-    for (let i = 0; i < this._cellsSorted.length; i++) {
-      const cell = this._cellsSorted[i]
-      if (cell.__element === element) {
-        return cell
-      }
-    }
-  }
-
   cellBoundsUpdated () {
     this.rUpdateCells(true, false, true)
   }
@@ -1198,23 +1139,15 @@ export default class MNSTR {
   }
 
   disableAllCellsResizeObserving () {
-    if (!this.observeCellBounds) {
-      return
-    }
-
-    for (let i = 0; i < this._cellsSorted.length; i++) {
-      this.disableNodeResizeObserving(this._cellsSorted[i])
-    }
+    this.observeCellBounds
+      ? this.getCellsSorted().forEach(cell => this.disableNodeResizeObserving(cell))
+      : void 0
   }
 
   enableAllCellsResizeObserving () {
-    if (!this.observeCellBounds) {
-      return
-    }
-
-    for (let i = 0; i < this._cellsSorted.length; i++) {
-      this.enableNodeResizeObserving(this._cellsSorted[i])
-    }
+    this.observeCellBounds
+      ? this.getCellsSorted().forEach(cell => this.enableNodeResizeObserving(cell))
+      : void 0
   }
 
   /**
@@ -1242,23 +1175,11 @@ export default class MNSTR {
   }
 
   getExpandInformationForElement (element) {
-    for (let i = 0; i < this._expandInformations.length; i++) {
-      const info = this._expandInformations[i]
-
-      if (info.element === element) {
-        return info
-      }
-    }
+    return this._expandInformations.find(info => info.element === element)
   }
 
   getExpandInformationForElementParent (element) {
-    for (let i = 0; i < this._expandInformations.length; i++) {
-      const info = this._expandInformations[i]
-
-      if (info.elementChildren.indexOf(element) > -1) {
-        return info
-      }
-    }
+    return this._expandInformations.find(info => info.elementChildren.indexOf(element) > -1)
   }
 
   createExpandInformation (element) {
