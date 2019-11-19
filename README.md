@@ -1,4 +1,4 @@
-![alt text](/logo.svg "mnstr.js" | width=100)
+![](/logo.svg | width=100)
 
 # What?
 MNSTR is designed to render large lists of data in no time by only rendering what is actually visible in the viewport (like UITableView, for example). It does not require you to provide cell heights and keeps the amount of DOM elements as low as possible.
@@ -84,8 +84,8 @@ expandElement(element)|object|Expands an element and exposes its children, fetch
 collapseElement(element)|object|Does the opposite of the method above.
 toggleExpandElement(element)|object|Toggle the things above.
 isElementExpanded(element)|object|Returns the current expand state of an element.
-exportRestoreState||Retrieve an object which you can pass to `restoreState()` to restore the list state.
-restoreState|object|Pass the object from `exportRestoreState()` to restore the list state. Make sure that you passed the correct data in `getData`. Also set `renderOnInitialize` to false when restoring.
+exportRestoreState()||Retrieve an object which you can pass to `restoreState()` to restore the list state.
+restoreState(state)|object|Pass the object from `exportRestoreState()` to restore the list state. Make sure that you passed the correct data in `getData`. Also set `renderOnInitialize` to false when restoring.
 destroy()||Not implemented yet. But it should be, right?
 
 # Callbacks
