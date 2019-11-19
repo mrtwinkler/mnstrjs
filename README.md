@@ -87,7 +87,7 @@ collapseElement(element)|object|Does the opposite of the method above.
 toggleExpandElement(element)|object|Toggle the things above.
 isElementExpanded(element)|object|Returns the current expand state of an element.
 exportRestoreState()||Retrieve an object which you can pass to `restoreState()` to restore the list state.
-restoreState(state)|object|Pass the object from `exportRestoreState()` to restore the list state. Make sure that you passed the correct data in `getData`. Also set `renderOnInitialize` to false when restoring.
+restoreState(state, parentNode)|object, HTMLElement (optional)|Pass the object from `exportRestoreState()` to restore the list state. Make sure that you passed the correct data in `getData`. Also set `renderOnInitialize` to false when restoring.
 destroy()||Not implemented yet. But it should be, right?
 
 # Callbacks

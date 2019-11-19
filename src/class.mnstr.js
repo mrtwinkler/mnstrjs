@@ -1,4 +1,4 @@
-class MNSTR {
+export default class MNSTR {
   /**
    * Construct, reset, destruct.
    */
@@ -579,8 +579,14 @@ class MNSTR {
     return this
   }
 
-  async restoreState (data) {
+  async restoreState (data, parentNode) {
     this.needUpdate()
+
+    if (!this._scrollNode) {
+      this.renderScrollNode(parentNode || this.parentNode)
+      this.renderListNode()
+      this.initScrollListener()
+    }
 
     if (this._currentMaxIndex === -1) {
       return
