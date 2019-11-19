@@ -1,5 +1,9 @@
 ![](/logo.svg | width=100)
 
+<p align="center">
+  <img width="100" src="/logo.svg">
+</p>
+
 # What?
 MNSTR is designed to render large lists of data in no time by only rendering what is actually visible in the viewport (like UITableView, for example). It does not require you to provide cell heights and keeps the amount of DOM elements as low as possible.
 
