@@ -5,7 +5,7 @@
 # What?
 MNSTR is designed to render large lists of data in no time by only rendering what is actually visible in the viewport (like UITableView, for example). It does not require you to provide cell heights and keeps the amount of DOM elements as low as possible.
 
-[Demos at mnstrjs.com](https://mnstrjs.com)
+[Demos at mnstrjs.com](http://mnstrjs.com)
 
 # Specs
 * no dependencies
