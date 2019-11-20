@@ -364,26 +364,20 @@ export default class MNSTR {
     return scrollNodeHeight + (scrollNodeHeight * (this.thresholdRatio * 2))
   }
 
-  updateListBounds () {
+  updateListBounds (force) {
     if (!this._cellsSorted || !this._cellsSorted.length) {
       return
     }
 
-    const lastCellBottom = this.getNodeBottom(this._cellsSorted[this._cellsSorted.length - 1])
+    const lastCell = this._cellsSorted[this._cellsSorted.length - 1]
+    const lastCellBottom = this.getNodeBottom(lastCell)
     const listHeight = this.getNodeHeight(this._listNode)
+    const scrollIsAtBottom = Math.ceil(this._scrollNode.scrollHeight - this.getScrollPosition()) === this.getNodeHeight(this._scrollNode)
+    const reachedListEnd = lastCell.__index === this._currentMaxIndex && lastCellBottom - listHeight !== 0
 
-    if (this._cellsSorted[this._cellsSorted.length - 1].__index === this._currentMaxIndex) {
-      if (lastCellBottom - listHeight !== 0) {
-        this.setNodeHeight(this._listNode, false, lastCellBottom, true)
-      }
-    } else {
-      const estimatedHeight = this._averageCellHeight * (this._currentMaxIndex + 1)
-      const height = Math.max(lastCellBottom, estimatedHeight)
-
-      height !== listHeight
-        ? this.setNodeHeight(this._listNode, false, height, true)
-        : void 0
-    }
+    force || scrollIsAtBottom || reachedListEnd
+      ? this.setNodeHeight(this._listNode, false, lastCellBottom + ((this._currentMaxIndex - lastCell.__index) * this._averageCellHeight), true)
+      : void 0
   }
 
   getTopRenderThreshold () {
@@ -583,7 +577,7 @@ export default class MNSTR {
     this.needUpdate()
 
     if (!this._scrollNode) {
-      this.renderScrollNode(parentNode || this.parentNode)
+      this.renderScrollNode(parentNode || this.parentNode)
       this.renderListNode()
       this.initScrollListener()
     }
@@ -835,7 +829,7 @@ export default class MNSTR {
         const posDeviation = indexDeviation * this._averageCellHeight
         forceIterator.index = cells[0].__index + indexDeviation
         forceIterator.pos = this.getNodeTop(cells[0]) + posDeviation
-        this.updateListBounds()
+        this.updateListBounds(true)
         this.setScrollPosition(scrollTop + posDeviation)
       } else {
         this.setScrollPosition(0)
@@ -847,7 +841,7 @@ export default class MNSTR {
     if (cells && cells.length && (this.getNodeTop(cells[0]) > thresholdBot || this.getNodeBottom(cells[cells.length - 1]) < thresholdTop)) {
       force = true
       forceIterator.index = Math.min(Math.round(Math.max(thresholdTop, 0) / this._averageCellHeight), this._currentMaxIndex - cells.length + 1)
-      forceIterator.pos = forceIterator.index * this._averageCellHeight + this.getTopRenderThreshold()
+      forceIterator.pos = Math.max(0, forceIterator.index * this._averageCellHeight + this.getTopRenderThreshold())
     }
 
     // Core Loop
