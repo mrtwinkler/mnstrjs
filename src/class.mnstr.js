@@ -925,10 +925,10 @@ export default class MNSTR {
       this.updateCellsSorted()
       await this.maintainCellCount()
       this.updateCellsAverages()
-      this.updateListBounds()
       this.emitEvent('cellsUpdated', this.getCellsSorted(), this)
     }
 
+    this.updateListBounds()
     this.scrollToCachedScrollElement()
     this.updateFirstAndLastCellInViewport()
     this._updatingCells = false
