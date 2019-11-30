@@ -284,20 +284,22 @@ export default class MNSTR {
     // Update VDOM now
 
     await this.updateVirtualDOM()
+    const cellsDOM = this.getCells()
 
-    this.getCells().forEach((cell, index) => {
-      const vElement = this._vElements[index]
+    for (let i = 0; i < cellsDOM.length; i++) {
+      const cell = cellsDOM[i]
+      const vElement = this._vElements[i]
 
       cell.__index = vElement.index
       cell.__element = vElement.element
       cell.__level = vElement.level
       cell.dataset.level = vElement.level
-    })
+    }
 
     // Now iterate over updated sorted cells and reposition them
 
     this.updateCellsSorted().reduce((acc, cell) => {
-      this.setNodeTop(cell, position)
+      this.setNodeTop(cell, acc)
       this.setNodeHeight(cell)
       return acc + this.getNodeHeight(cell)
     }, position)
