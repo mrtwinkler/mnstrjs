@@ -377,7 +377,7 @@ export default class MNSTR {
     const scrollIsAtBottom = Math.ceil(this._scrollNode.scrollHeight - this.getScrollPosition()) === this.getNodeHeight(this._scrollNode)
     const reachedListEnd = lastCell.__index === this._currentMaxIndex && lastCellBottom - listHeight !== 0
 
-    force || scrollIsAtBottom || reachedListEnd
+    force || scrollIsAtBottom || reachedListEnd || !listHeight
       ? this.setNodeHeight(this._listNode, false, lastCellBottom + ((this._currentMaxIndex - lastCell.__index) * this._averageCellHeight), true)
       : void 0
   }
@@ -930,7 +930,7 @@ export default class MNSTR {
       this.emitEvent('cellsUpdated', this.getCellsSorted(), this)
     }
 
-    this.updateListBounds()
+    this.updateListBounds(force)
     this.scrollToCachedScrollElement()
     this.updateFirstAndLastCellInViewport()
     this._updatingCells = false
