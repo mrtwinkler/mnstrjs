@@ -817,6 +817,7 @@ export default class MNSTR {
     const thresholdTop = scrollTop + this.getTopRenderThreshold()
     const thresholdBot = scrollTop + this.getBottomRenderThreshold()
     const cells = this.getCellsSorted().slice(0)
+    const forceUpdateListBounds = force
     let forceIterator = {}
     let updatedAnyCell = false
 
@@ -930,7 +931,7 @@ export default class MNSTR {
       this.emitEvent('cellsUpdated', this.getCellsSorted(), this)
     }
 
-    this.updateListBounds(force)
+    this.updateListBounds(forceUpdateListBounds)
     this.scrollToCachedScrollElement()
     this.updateFirstAndLastCellInViewport()
     this._updatingCells = false
