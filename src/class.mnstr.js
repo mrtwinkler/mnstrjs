@@ -268,6 +268,12 @@ export default class MNSTR {
     // Sort vElements by index
     const sortedVElements = this._vElements.slice(0).sort((a, b) => a.index - b.index)
 
+    if (!sortedVElements.length) {
+      await this.updateVirtualDOM()
+      this.updateCellsSorted()
+      return
+    }
+
     // Get first index
     const firstIndex = sortedVElements[0].index
 
@@ -732,25 +738,25 @@ export default class MNSTR {
         break
 
       // Add cell to bottom if there is no cell or if there is room at the bottom
-      case last.__index < this._currentMaxIndex && (didNotMeetMinimumHeight || this.getNodeBottom(last) < thresholdBot):
+      case last && last.__index < this._currentMaxIndex && (didNotMeetMinimumHeight || this.getNodeBottom(last) < thresholdBot):
         await this.addCell(last.__index + 1, this.getNodeBottom(last))
         didChangeAnything = true
         break
 
       // Add cell to top if there is room
-      case first.__index > 0 && (didNotMeetMinimumHeight || this.getNodeTop(first) > thresholdTop):
+      case first && first.__index > 0 && (didNotMeetMinimumHeight || this.getNodeTop(first) > thresholdTop):
         await this.addCell(first.__index - 1, this.getNodeTop(first), true)
         didChangeAnything = true
         break
 
       // Remove dispensable cell at the top
-      case first.__index < 0 || (this.getNodeBottom(first) < thresholdTop && actualListHeight - this.getNodeHeight(first) > minimumListHeight):
+      case first && (first.__index < 0 || (this.getNodeBottom(first) < thresholdTop && actualListHeight - this.getNodeHeight(first) > minimumListHeight)):
         await this.removeCell(first)
         didChangeAnything = true
         break
 
       // Remove dispensable cell at the bottom
-      case last.__index > this._currentMaxIndex || (this.getNodeTop(last) > thresholdBot && actualListHeight - this.getNodeHeight(last) > minimumListHeight):
+      case last && (last.__index > this._currentMaxIndex || (this.getNodeTop(last) > thresholdBot && actualListHeight - this.getNodeHeight(last) > minimumListHeight)):
         await this.removeCell(last)
         didChangeAnything = true
         break
