@@ -238,9 +238,10 @@ export default class MNSTR {
 
     const index = this._vElements.findIndex(vElement => vElement.element === cell.__element)
 
-    index > -1
-      ? this._vElements.splice(index, 1)
-      : void 0
+    if (index > -1) {
+      this._vElements.splice(index, 1)
+      return true
+    }
   }
 
   sortVirtualElements () {
@@ -733,32 +734,28 @@ export default class MNSTR {
 
         if (cell) {
           this.setNodeTop(cell, this.getNodeHeight(cell) * index)
+          didChangeAnything = true
         }
-        didChangeAnything = true
         break
 
       // Add cell to bottom if there is no cell or if there is room at the bottom
       case last && last.__index < this._currentMaxIndex && (didNotMeetMinimumHeight || this.getNodeBottom(last) < thresholdBot):
-        await this.addCell(last.__index + 1, this.getNodeBottom(last))
-        didChangeAnything = true
+        didChangeAnything = !!await this.addCell(last.__index + 1, this.getNodeBottom(last))
         break
 
       // Add cell to top if there is room
       case first && first.__index > 0 && (didNotMeetMinimumHeight || this.getNodeTop(first) > thresholdTop):
-        await this.addCell(first.__index - 1, this.getNodeTop(first), true)
-        didChangeAnything = true
+        didChangeAnything = !!await this.addCell(first.__index - 1, this.getNodeTop(first), true)
         break
 
       // Remove dispensable cell at the top
       case first && (first.__index < 0 || (this.getNodeBottom(first) < thresholdTop && actualListHeight - this.getNodeHeight(first) > minimumListHeight)):
-        await this.removeCell(first)
-        didChangeAnything = true
+        didChangeAnything = !!await this.removeCell(first)
         break
 
       // Remove dispensable cell at the bottom
       case last && (last.__index > this._currentMaxIndex || (this.getNodeTop(last) > thresholdBot && actualListHeight - this.getNodeHeight(last) > minimumListHeight)):
-        await this.removeCell(last)
-        didChangeAnything = true
+        didChangeAnything = !!await this.removeCell(last)
         break
     }
 
@@ -801,11 +798,14 @@ export default class MNSTR {
 
   async removeCell (cell) {
     if (this.virtualEnvironment) {
-      this.removeVirtualElementForCell(cell)
+      const didRemoveCell = this.removeVirtualElementForCell(cell)
       await this.syncVDOMToInternalState()
-    } else {
-      this._listNode.removeChild(cell)
+
+      return didRemoveCell
     }
+
+    this._listNode.removeChild(cell)
+    return true
   }
 
   rUpdateCells (force, brutalForce, retainPos) {
