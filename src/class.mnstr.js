@@ -836,7 +836,7 @@ export default class MNSTR {
       if (retainPosOnForce) {
         const indexDeviation = this.findCellIndexDeviation()
         const posDeviation = indexDeviation * this._averageCellHeight
-        forceIterator.index = Math.max(0, cells[0].__index + indexDeviation)
+        forceIterator.index = Math.max(0, cells && cells.length ? cells[0].__index + indexDeviation : 0)
         forceIterator.pos = Math.max(0, this.getNodeTop(cells[0]) + posDeviation)
         this.updateListBounds(true)
         this.setScrollPosition(scrollTop + posDeviation)
