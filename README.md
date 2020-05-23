@@ -91,6 +91,7 @@ toggleExpandElement(element)|object|Toggle the things above.
 isElementExpanded(element)|object|Returns the current expand state of an element.
 exportRestoreState()||Retrieve an object which you can pass to `restoreState()` to restore the list state.
 restoreState(state, parentNode)|object, HTMLElement (optional)|Pass the object from `exportRestoreState()` to restore the list state. Make sure that you passed the correct data in `getData`. Also set `renderOnInitialize` to false when restoring.
+scrollToElement(element, options)|object, object (optional)|Scrolls the list to the given element. `options` are: `nearest` (bool. Determines if the list should scroll so that the element is placed at the top or bottom of the viewport, depending on the current elements position relative to the current scroll position), `bottom` (bool. Force to scroll so that the element is at the bottom of the viewport.), `force` (bool. Force to scroll, even if the element is already in the viewport.), `offset` (float. Adds an offset to the target scroll position.).
 destroy()||Not implemented yet. But it should be, right?
 
 # Callbacks

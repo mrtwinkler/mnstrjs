@@ -506,7 +506,9 @@ export default class MNSTR {
   async scrollToElement (element, options) {
     const opts = Object.assign({
       smooth: false,
+      nearest: false,
       bottom: false,
+      force: false,
       offset: 0
     }, options)
 
@@ -523,11 +525,16 @@ export default class MNSTR {
     }
 
     if (cell) {
-      const position = opts.bottom
-        ? this.getNodeTop(cell) - this.getNodeHeight(this._scrollNode) + this.getNodeHeight(cell) + opts.offset
-        : this.getNodeTop(cell) + opts.offset
+      const isCompletelyInViewport = this.getNodeTop(cell) > this.getScrollPosition() && this.getNodeBottom(cell) < this.getScrollPosition() + this.getNodeHeight(this._scrollNode)
 
-      this.setScrollPosition(position)
+      if (opts.force || !isCompletelyInViewport) {
+        const toBottom = opts.bottom || (opts.nearest && this.getNodeTop(cell) > this.getScrollPosition() + this.getNodeHeight(this._scrollNode) / 2)
+        const position = toBottom
+          ? this.getNodeTop(cell) - this.getNodeHeight(this._scrollNode) + this.getNodeHeight(cell) + opts.offset
+          : this.getNodeTop(cell) + opts.offset
+
+        this.setScrollPosition(position)
+      }
 
       delete this._cachedScrollToElement
       delete this._cachedScrollToOptions
