@@ -666,54 +666,57 @@ export default class MNSTR {
   }
 
   getIndexForElement (element) {
-    let elementIndex = this._data.indexOf(element)
-
-    let data = elementIndex > -1
-      ? this._data
-      : void 0
-
-    let matchingInfo = void 0
-    let matchingInfoIndex = 0
-    let cumulativeLength = 0
-
-    for (let i = 0; i < this._expandInformations.length; i++) {
-      const info = this._expandInformations[i]
-
-      if (data === this._data && !info.elementParent && info.index >= elementIndex) {
-        break
-      }
-
-      if (!data) {
-        const index = info.elementChildren.indexOf(element)
-
-        if (index > -1) {
-          elementIndex = index
-          data = info.elementChildren
-          matchingInfo = info
-          matchingInfoIndex = info.index + 1
-          cumulativeLength = 0
-          continue
+    let index = this._data.indexOf(element)
+  
+    /**
+     * Found element in root data array. Iterate over expand informations
+     * to add preceding informations length to index, then return index.
+     */
+    if (index > -1) {
+      return this._expandInformations.reduce((i, info) => {
+        if (info.elementParent) {
+          return i
         }
-      }
 
-      if (matchingInfo && info.level > matchingInfo.level) {
-        const possibleIndex = matchingInfoIndex + elementIndex
-
-        if (possibleIndex <= info.index) {
-          return possibleIndex
-        } else {
-          cumulativeLength += info.elementChildren.length
+        var infoRootElementIndex = this._data.indexOf(info.element)
+        if (infoRootElementIndex < index) {
+          i += info.totalLength
         }
-      } else if (matchingInfo) {
-        return matchingInfoIndex + elementIndex + cumulativeLength
-      } else {
-        cumulativeLength += info.elementChildren.length
-      }
+
+        return i
+      }, index)
     }
 
-    return elementIndex > -1
-      ? elementIndex + cumulativeLength + matchingInfoIndex
-      : elementIndex
+    /**
+     * Must iterate over expand informations to find the element.
+     * If found, iterate over possible preceding siblings which are expanded
+     * and add their length. Then return index.
+     */
+    return this._expandInformations.reduce((index, info) => {
+      if (index > -1) {
+        return index
+      }
+
+      const indexOfElementInInfoChildren = info.elementChildren.indexOf(element)
+      
+      if (indexOfElementInInfoChildren > -1) {
+        index = indexOfElementInInfoChildren + info.index + 1 + info.elementChildren.reduce((acc, child, ind) => {
+          if (ind >= indexOfElementInInfoChildren) {
+            return acc
+          }
+
+          const expInfo = this._expandInformations.find(exp => exp.element === child)
+
+          if (expInfo) {
+            acc += expInfo.totalLength
+          }
+
+          return acc
+        }, 0)
+      }
+
+      return index
+    }, -1)
   }
 
   /**
@@ -1207,7 +1210,7 @@ export default class MNSTR {
       elementIndex: parentInfo ? parentInfo.elementChildren.indexOf(element) : this._data.indexOf(element),
       elementChildren: this.getChildrenForElement(element),
       elementParent: parentInfo ? parentInfo.element : void 0,
-      index: void 0,
+      index: this.getIndexForElement(element),
       level: parentInfo ? parentInfo.level + 1 : 1,
       totalLength: 0
     }
@@ -1215,23 +1218,20 @@ export default class MNSTR {
 
   addExpandInformationForElement (element) {
     const info = this.createExpandInformation(element)
-
     this._expandInformations.push(info)
-    this.sortExpandInformations()
+    this.invalidateExpandInformations()
 
     if (this.rememberChildrenExpands) {
       for (let i = this._expandInformations.indexOf(info) + 1; i < this._expandInformations.length; i++) {
-        var subsequentInfo = this._expandInformations[i]
+        const subsequentInfo = this._expandInformations[i]
+        const previousInfo = this._expandInformations[i - 1]
 
-        if (subsequentInfo.level <= info.level) {
-          break
+        if (previousInfo.active && previousInfo.element === subsequentInfo.elementParent) {
+          subsequentInfo.active = true
         }
-
-        subsequentInfo.active = true
       }
     }
-
-    this.calculateExpandInformationIndexes()
+    this.invalidateExpandInformations()
   }
 
   removeExpandInformationForElement (element) {
@@ -1260,12 +1260,16 @@ export default class MNSTR {
       }
     }
 
-    this.calculateExpandInformationIndexes()
+    this.invalidateExpandInformations()
   }
 
   invalidateExpandInformations () {
-    this.sortExpandInformations()
+    // Sort
 
+    this._expandInformations.sort((i1, i2) => i1.index - i2.index)
+
+    // Remove abandoned
+    
     const infosToDelete = []
 
     for (let i = 0; i < this._expandInformations.length; i++) {
@@ -1291,65 +1295,8 @@ export default class MNSTR {
       this.removeElementFromArray(this._expandInformations, infosToDelete[i])
     }
 
+    // Recalculate indexes
     this.calculateExpandInformationIndexes()
-  }
-
-  sortExpandInformations () {
-    const result = []
-
-    for (let i = 0; i < this._expandInformations.length; i++) {
-      const info = this._expandInformations[i]
-
-      if (info.elementParent) {
-        // Current iteration item has a parent. We need to find this parent in
-        // the list and put the item after, but before the next item that has not
-        // this parent or a greater dataIndex that the iteration item.
-
-        let matched = false
-        let added = false
-        let lastCompare = void 0
-
-        for (let i2 = 0; i2 < result.length; i2++) {
-          const compare = result[i2]
-
-          if ((matched && compare.elementParent === lastCompare.elementParent && compare.elementIndex > info.elementIndex) || (matched && compare.elementParent === info.elementParent && compare.elementIndex > info.elementIndex) || (matched && compare.level < info.level) || (compare.elementParent === info.element)) {
-            result.splice(i2, 0, info)
-            added = true
-            break
-          } else if (compare.element === info.elementParent) {
-            matched = true
-          }
-
-          lastCompare = compare
-        }
-
-        !added
-          ? result.push(info)
-          : void 0
-      } else {
-        // Current iteration item has no parent. We need to find the element, that
-        // also has no parent but a greater dataIndex than the item and put the
-        // item right before it.
-
-        let added = false
-
-        for (let i2 = 0; i2 < result.length; i2++) {
-          const compare = result[i2]
-
-          if ((!compare.elementParent && compare.elementIndex > info.elementIndex) || (compare.elementParent === info.element)) {
-            result.splice(i2, 0, info)
-            added = true
-            break
-          }
-        }
-
-        !added
-          ? result.push(info)
-          : void 0
-      }
-    }
-
-    this._expandInformations = result
   }
 
   calculateExpandInformationIndexes () {
