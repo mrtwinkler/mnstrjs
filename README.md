@@ -143,3 +143,6 @@ The browsers have a height limitation on DOM elements, it means that currently t
 `Blink deferred a task [...]`. When using MNSTR you may come across this (Chrome) or a similar warning. See https://stackoverflow.com/a/37367801/258931 on how to track if your cell renderers might be a cause for that. But don't panic. At least Chrome likes to trigger this warning even if there are no events taking more than 5ms.
 
 **General rule**: Try to keep your cell renderers and the initialization of them as simple as possible. Try to test your list on slow devices or use cpu throttling.
+
+# License
+MIT
