@@ -136,8 +136,8 @@ export default class MNSTR {
 
     return {
       scrollTop: this.getScrollPosition(),
-      index: first.__index,
-      position: this.getNodeTop(first),
+      index: first ? first.__index : 0,
+      position: first ? this.getNodeTop(first) : 0,
       height: this.getNodeHeight(this._listNode)
     }
   }
@@ -667,7 +667,7 @@ export default class MNSTR {
 
   getIndexForElement (element) {
     let index = this._data.indexOf(element)
-  
+
     /**
      * Found element in root data array. Iterate over expand informations
      * to add preceding informations length to index, then return index.
@@ -698,7 +698,7 @@ export default class MNSTR {
       }
 
       const indexOfElementInInfoChildren = info.elementChildren.indexOf(element)
-      
+
       if (indexOfElementInInfoChildren > -1) {
         index = indexOfElementInInfoChildren + info.index + 1 + info.elementChildren.reduce((acc, child, ind) => {
           if (ind >= indexOfElementInInfoChildren) {
@@ -1269,7 +1269,7 @@ export default class MNSTR {
     this._expandInformations.sort((i1, i2) => i1.index - i2.index)
 
     // Remove abandoned
-    
+
     const infosToDelete = []
 
     for (let i = 0; i < this._expandInformations.length; i++) {
