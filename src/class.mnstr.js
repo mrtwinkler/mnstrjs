@@ -381,7 +381,7 @@ export default class MNSTR {
     const lastCell = this._cellsSorted[this._cellsSorted.length - 1]
     const lastCellBottom = this.getNodeBottom(lastCell)
     const listHeight = this.getNodeHeight(this._listNode)
-    const scrollIsAtBottom = Math.ceil(this._scrollNode.scrollHeight - this.getScrollPosition()) === this.getNodeHeight(this._scrollNode)
+    const scrollIsAtBottom = Math.floor(this._scrollNode.scrollHeight - this.getScrollPosition()) - Math.ceil(this.getNodeHeight(this._scrollNode)) <= 1
     const reachedListEnd = lastCell.__index === this._currentMaxIndex && lastCellBottom - listHeight !== 0
 
     force || scrollIsAtBottom || reachedListEnd || !listHeight
