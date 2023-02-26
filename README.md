@@ -8,13 +8,13 @@ MNSTR is designed to render large lists of data in no time by only rendering wha
 [Demo](http://mnstrjs.com)
 
 # Specs
-* 5kb gzipped!
-* no explicit row heights!
-* 100% responsive!
-* native browser scrolling!
-* support for tree data!
-* restorable state!
-* no dependencies!
+* 5kb gzipped
+* no explicit row heights
+* 100% responsive
+* native browser scrolling
+* support for tree data
+* restorable state
+* no dependencies
 
 # Install
 Download or clone this repository or use npm.
@@ -138,11 +138,6 @@ All mature browsers and IE11+.
 
 # Downsides
 None. Well, actually, there is one. MNSTR does not calculate its height by provided cell heights, it estimates by averages. When cell renderers have different heights, this might lead to scrollbar jumping at the end or the beginning of the list, as these are the moments where the deviations between estimating and the real world are corrected.
-
-# Limits
-The browsers have a height limitation on DOM elements, it means that currently the list cannot display more than ~500k items depending on the browser.
-
-`Blink deferred a task [...]`. When using MNSTR you may come across this (Chrome) or a similar warning. See https://stackoverflow.com/a/37367801/258931 on how to track if your cell renderers might be a cause for that. But don't panic. At least Chrome likes to trigger this warning even if there are no events taking more than 5ms.
 
 **General rule**: Try to keep your cell renderers and the initialization of them as simple as possible. Try to test your list on slow devices or use cpu throttling.
 
