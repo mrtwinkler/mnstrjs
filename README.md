@@ -8,11 +8,13 @@ MNSTR is designed to render large lists of data in no time by only rendering wha
 [Demo](http://mnstrjs.com)
 
 # Specs
-* no dependencies
-* native browser scrolling
-* support for tree data
-* restorable state
-* responsive
+* 5kb gzipped!
+* no explicit row heights!
+* 100% responsive!
+* native browser scrolling!
+* support for tree data!
+* restorable state!
+* no dependencies!
 
 # Install
 Download or clone this repository or use npm.
