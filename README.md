@@ -1,3 +1,5 @@
+# Leave a star!
+
 <p align="center">
   <img width="100" src="/logo.svg">
 </p>
